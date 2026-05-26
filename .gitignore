@@ -1,3 +1,5 @@
+# Creator: Simon Krieger
+
 # macOS
 .DS_Store
 .AppleDouble
@@ -12,6 +14,9 @@ Icon?
 .env.*
 !.env.example
 
+# Local agent instructions
+AGENTS.md
+
 # Logs and temporary files
 *.log
 *.tmp
@@ -19,9 +24,17 @@ Icon?
 tmp/
 temp/
 
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+build/
+dist/
+*.egg-info/
+
 # Editor and IDE metadata
 .vscode/
 .idea/
 *.swp
 *.swo
-

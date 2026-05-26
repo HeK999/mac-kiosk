@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tears-kiosk"
+version = "0.1.0"
+description = "macOS Chrome kiosk launcher with pipx-installable CLI."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "Simon Krieger" }
+]
+license = { text = "Proprietary" }
+classifiers = [
+  "Environment :: MacOS X",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+
+[project.scripts]
+kiosk = "tears_kiosk.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["tears_kiosk*"]
+

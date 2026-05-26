@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Creator: Simon Krieger
 
 set -u
 
