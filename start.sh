@@ -5,7 +5,7 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REFRESH_SCRIPT="${SCRIPT_DIR}/chrome-auto-refresh.sh"
-KIOSK_URL="https://576tears.ai/"
+KIOSK_URL="${KIOSK_URL:-https://example.com/}"
 CHROME_APP_NAME="Google Chrome"
 
 log() {

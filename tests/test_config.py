@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tears_kiosk.config import (
+from mac_kiosk.config import (
     DEFAULT_MIN_IDLE_SECONDS,
     DEFAULT_REFRESH_INTERVAL_SECONDS,
     KioskConfig,

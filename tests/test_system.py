@@ -2,11 +2,11 @@ import unittest
 import subprocess
 from unittest.mock import Mock, patch
 
-from tears_kiosk import system
+from mac_kiosk import system
 
 
 class SystemTests(unittest.TestCase):
-    @patch("tears_kiosk.system.CHROME_APP_PATHS")
+    @patch("mac_kiosk.system.CHROME_APP_PATHS")
     def test_chrome_installed_detects_known_path(self, paths):
         existing = Mock()
         missing = Mock()
@@ -16,30 +16,30 @@ class SystemTests(unittest.TestCase):
 
         self.assertTrue(system.chrome_installed())
 
-    @patch("tears_kiosk.system.install_chrome_with_homebrew")
-    @patch("tears_kiosk.system.chrome_installed", return_value=True)
+    @patch("mac_kiosk.system.install_chrome_with_homebrew")
+    @patch("mac_kiosk.system.chrome_installed", return_value=True)
     def test_ensure_chrome_does_not_install_when_present(self, chrome_installed, install):
         system.ensure_chrome()
 
         install.assert_not_called()
 
-    @patch("tears_kiosk.system.install_chrome_with_homebrew")
-    @patch("tears_kiosk.system.chrome_installed", return_value=False)
+    @patch("mac_kiosk.system.install_chrome_with_homebrew")
+    @patch("mac_kiosk.system.chrome_installed", return_value=False)
     def test_ensure_chrome_installs_when_missing(self, chrome_installed, install):
         system.ensure_chrome()
 
         install.assert_called_once()
 
-    @patch("tears_kiosk.system.subprocess.run")
+    @patch("mac_kiosk.system.subprocess.run")
     def test_get_idle_seconds_parses_ioreg_output(self, run):
         run.return_value.returncode = 0
         run.return_value.stdout = '    "HIDIdleTime" = 90000000000\n'
 
         self.assertEqual(system.get_idle_seconds(), 90)
 
-    @patch("tears_kiosk.system.homebrew_executable", side_effect=[None, "/opt/homebrew/bin/brew"])
-    @patch("tears_kiosk.system.install_homebrew")
-    @patch("tears_kiosk.system.subprocess.run")
+    @patch("mac_kiosk.system.homebrew_executable", side_effect=[None, "/opt/homebrew/bin/brew"])
+    @patch("mac_kiosk.system.install_homebrew")
+    @patch("mac_kiosk.system.subprocess.run")
     def test_install_chrome_installs_homebrew_when_missing(self, run, install_homebrew, brew):
         system.install_chrome_with_homebrew()
 
@@ -50,8 +50,8 @@ class SystemTests(unittest.TestCase):
         )
 
     @patch("builtins.print")
-    @patch("tears_kiosk.system.time.sleep")
-    @patch("tears_kiosk.system.start_chrome_kiosk")
+    @patch("mac_kiosk.system.time.sleep")
+    @patch("mac_kiosk.system.start_chrome_kiosk")
     def test_start_chrome_kiosk_with_retries_recovers_after_transient_failure(
         self,
         start_chrome_kiosk,

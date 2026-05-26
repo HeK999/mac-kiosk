@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 
-APP_NAME = "tears-kiosk"
+APP_NAME = "mac-kiosk"
 DEFAULT_REFRESH_INTERVAL_SECONDS = 1800
 DEFAULT_MIN_IDLE_SECONDS = 90
 

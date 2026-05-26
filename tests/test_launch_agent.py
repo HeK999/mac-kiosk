@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-from tears_kiosk.launch_agent import (
+from mac_kiosk.launch_agent import (
     LABEL,
     build_launch_agent,
     load_launch_agent,
@@ -36,7 +36,7 @@ class LaunchAgentTests(unittest.TestCase):
     def test_write_launch_agent_accepts_multi_argument_command(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = write_launch_agent(
-                ["/usr/bin/python3", "-m", "tears_kiosk.cli"],
+                ["/usr/bin/python3", "-m", "mac_kiosk.cli"],
                 Path(tmp),
                 Path("/repo"),
             )
@@ -45,14 +45,14 @@ class LaunchAgentTests(unittest.TestCase):
 
         self.assertEqual(
             data["ProgramArguments"],
-            ["/usr/bin/python3", "-m", "tears_kiosk.cli", "run"],
+            ["/usr/bin/python3", "-m", "mac_kiosk.cli", "run"],
         )
         self.assertEqual(data["WorkingDirectory"], "/repo")
 
-    @patch("tears_kiosk.launch_agent.os.getuid", return_value=501)
-    @patch("tears_kiosk.launch_agent.subprocess.run")
+    @patch("mac_kiosk.launch_agent.os.getuid", return_value=501)
+    @patch("mac_kiosk.launch_agent.subprocess.run")
     def test_load_launch_agent_reloads_existing_agent(self, run, getuid):
-        path = Path("/tmp/com.simonkrieger.tears-kiosk.plist")
+        path = Path("/tmp/com.simonkrieger.mac-kiosk.plist")
         run.return_value.returncode = 0
 
         load_launch_agent(path)
@@ -81,7 +81,7 @@ class LaunchAgentTests(unittest.TestCase):
             ],
         )
 
-    @patch("tears_kiosk.launch_agent.unload_launch_agent")
+    @patch("mac_kiosk.launch_agent.unload_launch_agent")
     def test_remove_launch_agent_removes_file(self, unload_launch_agent):
         with tempfile.TemporaryDirectory() as tmp:
             path = write_launch_agent("/usr/local/bin/kiosk", Path(tmp))

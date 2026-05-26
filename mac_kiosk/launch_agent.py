@@ -13,7 +13,7 @@ import subprocess
 from .config import app_support_dir
 
 
-LABEL = "com.simonkrieger.tears-kiosk"
+LABEL = "com.simonkrieger.mac-kiosk"
 ProgramCommand = str | list[str]
 
 
