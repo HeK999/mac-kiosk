@@ -9,6 +9,7 @@ import argparse
 from pathlib import Path
 import shutil
 import sys
+from typing import NamedTuple
 
 from .config import (
     DEFAULT_MIN_IDLE_SECONDS,
@@ -26,13 +27,25 @@ from .launch_agent import (
     remove_launch_agent,
     write_launch_agent,
 )
+from .hammerspoon import (
+    disable_hammerspoon_autolaunch_and_quit,
+    ensure_hammerspoon,
+    get_hammerspoon_status,
+)
 from .system import ensure_chrome, run_kiosk
 
 
+class KioskCommand(NamedTuple):
+    arguments: list[str]
+    working_directory: Path | None = None
+
+
 def print_status() -> KioskConfig | None:
+    hammerspoon = get_hammerspoon_status()
     config = load_config()
     if config is None:
         print("Kiosk ist nicht eingerichtet.")
+        print_hammerspoon_status(hammerspoon)
         return None
 
     refresh = "aktiv" if config.auto_refresh_enabled else "deaktiviert"
@@ -44,7 +57,17 @@ def print_status() -> KioskConfig | None:
         print(f"Mindest-Inaktivitaet: {config.min_idle_seconds}s")
     print(f"Config: {config_path()}")
     print(f"LaunchAgent: {launch_agent_path()}")
+    print_hammerspoon_status(hammerspoon)
     return config
+
+
+def print_hammerspoon_status(status) -> None:
+    installed = "installiert" if status.installed else "nicht installiert"
+    config = "vorhanden" if status.config_exists else "fehlt"
+    print(f"Hammerspoon: {installed}")
+    print(f"Hammerspoon-Config: {config}")
+    if status.backup_count:
+        print(f"Hammerspoon-Config-Backups: {status.backup_count}")
 
 
 def prompt_bool(prompt: str, default: bool) -> bool:
@@ -88,16 +111,27 @@ def prompt_url(existing: str | None = None) -> str:
             print(exc)
 
 
-def kiosk_executable() -> str:
+def kiosk_command() -> KioskCommand:
     executable = shutil.which("kiosk")
     if executable:
-        return executable
-    return str(Path(sys.argv[0]).resolve())
+        return KioskCommand([executable])
+
+    script_path = Path(sys.argv[0]).resolve()
+    if script_path.name == "cli.py" and script_path.parent.name == "tears_kiosk":
+        return KioskCommand([sys.executable, "-m", "tears_kiosk.cli"], script_path.parent.parent)
+
+    return KioskCommand([sys.executable, str(script_path)])
 
 
 def configure(existing: KioskConfig | None = None) -> KioskConfig:
     print("Pruefe Google Chrome...")
     ensure_chrome()
+    print("Pruefe Hammerspoon...")
+    ensure_hammerspoon()
+    print(
+        "Hinweis: Hammerspoon benoetigt eventuell Zugriff unter "
+        "Systemeinstellungen > Datenschutz & Sicherheit > Bedienungshilfen."
+    )
 
     url = prompt_url(existing.url if existing else None)
     auto_refresh_enabled = prompt_bool(
@@ -129,7 +163,8 @@ def configure(existing: KioskConfig | None = None) -> KioskConfig:
     )
     save_config(config)
 
-    plist_path = write_launch_agent(kiosk_executable())
+    command = kiosk_command()
+    plist_path = write_launch_agent(command.arguments, working_directory=command.working_directory)
     load_launch_agent(plist_path)
 
     print("Kiosk wurde eingerichtet.")
@@ -141,6 +176,7 @@ def configure(existing: KioskConfig | None = None) -> KioskConfig:
 def disable() -> None:
     removed_agent = remove_launch_agent()
     removed_config = delete_config()
+    disable_hammerspoon_autolaunch_and_quit()
     if removed_agent or removed_config:
         print("Kiosk wurde deaktiviert.")
     else:

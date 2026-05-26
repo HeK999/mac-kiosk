@@ -1,4 +1,5 @@
 import unittest
+import subprocess
 from unittest.mock import Mock, patch
 
 from tears_kiosk import system
@@ -48,7 +49,25 @@ class SystemTests(unittest.TestCase):
             check=True,
         )
 
+    @patch("builtins.print")
+    @patch("tears_kiosk.system.time.sleep")
+    @patch("tears_kiosk.system.start_chrome_kiosk")
+    def test_start_chrome_kiosk_with_retries_recovers_after_transient_failure(
+        self,
+        start_chrome_kiosk,
+        sleep,
+        print_mock,
+    ):
+        start_chrome_kiosk.side_effect = [
+            subprocess.CalledProcessError(1, ["open"]),
+            None,
+        ]
+
+        system.start_chrome_kiosk_with_retries("https://example.com")
+
+        self.assertEqual(start_chrome_kiosk.call_count, 2)
+        sleep.assert_called_once_with(system.START_CHROME_RETRY_SECONDS)
+
 
 if __name__ == "__main__":
     unittest.main()
-

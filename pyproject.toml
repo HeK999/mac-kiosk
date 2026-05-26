@@ -24,3 +24,5 @@ kiosk = "tears_kiosk.cli:main"
 [tool.setuptools.packages.find]
 include = ["tears_kiosk*"]
 
+[tool.setuptools.package-data]
+tears_kiosk = ["assets/*.lua"]

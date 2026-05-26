@@ -15,6 +15,8 @@ from .config import KioskConfig
 
 
 CHROME_APP_NAME = "Google Chrome"
+START_CHROME_ATTEMPTS = 24
+START_CHROME_RETRY_SECONDS = 5
 CHROME_APP_PATHS = (
     Path("/Applications/Google Chrome.app"),
     Path.home() / "Applications" / "Google Chrome.app",
@@ -100,6 +102,22 @@ def start_chrome_kiosk(url: str) -> None:
     )
 
 
+def start_chrome_kiosk_with_retries(url: str) -> None:
+    for attempt in range(1, START_CHROME_ATTEMPTS + 1):
+        try:
+            start_chrome_kiosk(url)
+            return
+        except subprocess.CalledProcessError as exc:
+            print(
+                f"Chrome konnte nicht gestartet werden "
+                f"(Versuch {attempt}/{START_CHROME_ATTEMPTS}): {exc}",
+                flush=True,
+            )
+            if attempt == START_CHROME_ATTEMPTS:
+                raise
+            time.sleep(START_CHROME_RETRY_SECONDS)
+
+
 def reload_chrome_tab() -> bool:
     result = subprocess.run(
         [
@@ -151,7 +169,7 @@ def wait_for_idle_threshold(min_idle_seconds: int) -> None:
 
 def run_kiosk(config: KioskConfig) -> None:
     stop_chrome()
-    start_chrome_kiosk(config.url)
+    start_chrome_kiosk_with_retries(config.url)
 
     if not config.auto_refresh_enabled:
         while True:

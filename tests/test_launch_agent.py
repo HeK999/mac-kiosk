@@ -2,9 +2,15 @@ import plistlib
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
-from tears_kiosk.launch_agent import LABEL, build_launch_agent, remove_launch_agent, write_launch_agent
+from tears_kiosk.launch_agent import (
+    LABEL,
+    build_launch_agent,
+    load_launch_agent,
+    remove_launch_agent,
+    write_launch_agent,
+)
 
 
 class LaunchAgentTests(unittest.TestCase):
@@ -14,6 +20,9 @@ class LaunchAgentTests(unittest.TestCase):
 
         self.assertEqual(data["Label"], LABEL)
         self.assertEqual(data["ProgramArguments"], ["/usr/local/bin/kiosk", "run"])
+        self.assertEqual(data["LimitLoadToSessionType"], "Aqua")
+        self.assertEqual(data["ProcessType"], "Interactive")
+        self.assertIn("/usr/bin", data["EnvironmentVariables"]["PATH"])
         self.assertTrue(data["RunAtLoad"])
 
     def test_write_launch_agent_writes_plist(self):
@@ -23,6 +32,54 @@ class LaunchAgentTests(unittest.TestCase):
                 data = plistlib.load(handle)
 
         self.assertEqual(data["ProgramArguments"], ["/usr/local/bin/kiosk", "run"])
+
+    def test_write_launch_agent_accepts_multi_argument_command(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_launch_agent(
+                ["/usr/bin/python3", "-m", "tears_kiosk.cli"],
+                Path(tmp),
+                Path("/repo"),
+            )
+            with path.open("rb") as handle:
+                data = plistlib.load(handle)
+
+        self.assertEqual(
+            data["ProgramArguments"],
+            ["/usr/bin/python3", "-m", "tears_kiosk.cli", "run"],
+        )
+        self.assertEqual(data["WorkingDirectory"], "/repo")
+
+    @patch("tears_kiosk.launch_agent.os.getuid", return_value=501)
+    @patch("tears_kiosk.launch_agent.subprocess.run")
+    def test_load_launch_agent_reloads_existing_agent(self, run, getuid):
+        path = Path("/tmp/com.simonkrieger.tears-kiosk.plist")
+        run.return_value.returncode = 0
+
+        load_launch_agent(path)
+
+        self.assertEqual(
+            run.mock_calls,
+            [
+                call(
+                    ["launchctl", "bootout", "gui/501", str(path)],
+                    check=False,
+                    stdout=-3,
+                    stderr=-3,
+                ),
+                call(
+                    ["launchctl", "unload", str(path)],
+                    check=False,
+                    stdout=-3,
+                    stderr=-3,
+                ),
+                call(
+                    ["launchctl", "bootstrap", "gui/501", str(path)],
+                    check=False,
+                    stdout=-3,
+                    stderr=-3,
+                ),
+            ],
+        )
 
     @patch("tears_kiosk.launch_agent.unload_launch_agent")
     def test_remove_launch_agent_removes_file(self, unload_launch_agent):
@@ -36,4 +93,3 @@ class LaunchAgentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
