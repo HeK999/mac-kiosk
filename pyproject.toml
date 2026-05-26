@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mac-kiosk"
+name = "kiosk"
 version = "0.1.0"
 description = "macOS Chrome kiosk launcher with pipx-installable CLI."
 readme = "README.md"
@@ -19,10 +19,10 @@ classifiers = [
 ]
 
 [project.scripts]
-kiosk = "mac_kiosk.cli:main"
+kiosk = "kiosk.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["mac_kiosk*"]
+include = ["kiosk*"]
 
 [tool.setuptools.package-data]
-mac_kiosk = ["assets/*.lua"]
+kiosk = ["assets/*.lua"]

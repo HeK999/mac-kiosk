@@ -117,8 +117,8 @@ def kiosk_command() -> KioskCommand:
         return KioskCommand([executable])
 
     script_path = Path(sys.argv[0]).resolve()
-    if script_path.name == "cli.py" and script_path.parent.name == "mac_kiosk":
-        return KioskCommand([sys.executable, "-m", "mac_kiosk.cli"], script_path.parent.parent)
+    if script_path.name == "cli.py" and script_path.parent.name == "kiosk":
+        return KioskCommand([sys.executable, "-m", "kiosk.cli"], script_path.parent.parent)
 
     return KioskCommand([sys.executable, str(script_path)])
 

@@ -4,11 +4,11 @@ import io
 from pathlib import Path
 from unittest.mock import Mock, call, patch
 
-from mac_kiosk import hammerspoon
+from kiosk import hammerspoon
 
 
 class HammerspoonTests(unittest.TestCase):
-    @patch("mac_kiosk.hammerspoon.HAMMERSPOON_APP_PATHS")
+    @patch("kiosk.hammerspoon.HAMMERSPOON_APP_PATHS")
     def test_hammerspoon_installed_detects_known_path(self, paths):
         existing = Mock()
         missing = Mock()
@@ -18,8 +18,8 @@ class HammerspoonTests(unittest.TestCase):
 
         self.assertTrue(hammerspoon.hammerspoon_installed())
 
-    @patch("mac_kiosk.hammerspoon.subprocess.run")
-    @patch("mac_kiosk.hammerspoon.homebrew_executable", return_value="/opt/homebrew/bin/brew")
+    @patch("kiosk.hammerspoon.subprocess.run")
+    @patch("kiosk.hammerspoon.homebrew_executable", return_value="/opt/homebrew/bin/brew")
     def test_install_hammerspoon_uses_homebrew_cask(self, homebrew_executable, run):
         hammerspoon.install_hammerspoon_with_homebrew()
 
@@ -44,10 +44,10 @@ class HammerspoonTests(unittest.TestCase):
         self.assertEqual(hammerspoon.hammerspoon_release_for_macos((13, 0)), "1.1.0")
         self.assertEqual(hammerspoon.hammerspoon_release_for_macos((14, 0)), "1.1.0")
 
-    @patch("mac_kiosk.hammerspoon.install_hammerspoon_from_github_release")
-    @patch("mac_kiosk.hammerspoon.install_hammerspoon_with_homebrew")
-    @patch("mac_kiosk.hammerspoon.homebrew_executable", return_value="/opt/homebrew/bin/brew")
-    @patch("mac_kiosk.hammerspoon.hammerspoon_installed", return_value=False)
+    @patch("kiosk.hammerspoon.install_hammerspoon_from_github_release")
+    @patch("kiosk.hammerspoon.install_hammerspoon_with_homebrew")
+    @patch("kiosk.hammerspoon.homebrew_executable", return_value="/opt/homebrew/bin/brew")
+    @patch("kiosk.hammerspoon.hammerspoon_installed", return_value=False)
     def test_ensure_hammerspoon_app_uses_homebrew_when_available(
         self,
         installed,
@@ -60,10 +60,10 @@ class HammerspoonTests(unittest.TestCase):
         install_homebrew.assert_called_once()
         install_release.assert_not_called()
 
-    @patch("mac_kiosk.hammerspoon.install_hammerspoon_from_github_release")
-    @patch("mac_kiosk.hammerspoon.install_hammerspoon_with_homebrew")
-    @patch("mac_kiosk.hammerspoon.homebrew_executable", return_value=None)
-    @patch("mac_kiosk.hammerspoon.hammerspoon_installed", return_value=False)
+    @patch("kiosk.hammerspoon.install_hammerspoon_from_github_release")
+    @patch("kiosk.hammerspoon.install_hammerspoon_with_homebrew")
+    @patch("kiosk.hammerspoon.homebrew_executable", return_value=None)
+    @patch("kiosk.hammerspoon.hammerspoon_installed", return_value=False)
     def test_ensure_hammerspoon_app_uses_release_when_homebrew_missing(
         self,
         installed,
@@ -76,13 +76,13 @@ class HammerspoonTests(unittest.TestCase):
         install_homebrew.assert_not_called()
         install_release.assert_called_once()
 
-    @patch("mac_kiosk.hammerspoon.install_hammerspoon_from_github_release")
+    @patch("kiosk.hammerspoon.install_hammerspoon_from_github_release")
     @patch(
-        "mac_kiosk.hammerspoon.install_hammerspoon_with_homebrew",
+        "kiosk.hammerspoon.install_hammerspoon_with_homebrew",
         side_effect=RuntimeError("brew failed"),
     )
-    @patch("mac_kiosk.hammerspoon.homebrew_executable", return_value="/opt/homebrew/bin/brew")
-    @patch("mac_kiosk.hammerspoon.hammerspoon_installed", return_value=False)
+    @patch("kiosk.hammerspoon.homebrew_executable", return_value="/opt/homebrew/bin/brew")
+    @patch("kiosk.hammerspoon.hammerspoon_installed", return_value=False)
     def test_ensure_hammerspoon_app_falls_back_when_homebrew_fails(
         self,
         installed,
@@ -96,9 +96,9 @@ class HammerspoonTests(unittest.TestCase):
         install_homebrew.assert_called_once()
         install_release.assert_called_once()
 
-    @patch("mac_kiosk.hammerspoon.copy_hammerspoon_app", return_value=Path("/Applications/Hammerspoon.app"))
-    @patch("mac_kiosk.hammerspoon.macos_version", return_value=(10, 14))
-    @patch("mac_kiosk.hammerspoon.subprocess.run")
+    @patch("kiosk.hammerspoon.copy_hammerspoon_app", return_value=Path("/Applications/Hammerspoon.app"))
+    @patch("kiosk.hammerspoon.macos_version", return_value=(10, 14))
+    @patch("kiosk.hammerspoon.subprocess.run")
     def test_install_from_github_release_downloads_unzips_and_copies(
         self,
         run,
@@ -107,7 +107,7 @@ class HammerspoonTests(unittest.TestCase):
     ):
         run.return_value.returncode = 0
 
-        with patch("mac_kiosk.hammerspoon.Path.exists", return_value=True):
+        with patch("kiosk.hammerspoon.Path.exists", return_value=True):
             with patch("sys.stdout", new=io.StringIO()):
                 installed_path = hammerspoon.install_hammerspoon_from_github_release()
 
@@ -121,15 +121,15 @@ class HammerspoonTests(unittest.TestCase):
         self.assertEqual(commands[1][0:2], ["/usr/bin/unzip", "-q"])
         copy_hammerspoon_app.assert_called_once()
 
-    @patch("mac_kiosk.hammerspoon.shutil.copytree")
-    @patch("mac_kiosk.hammerspoon.shutil.rmtree")
+    @patch("kiosk.hammerspoon.shutil.copytree")
+    @patch("kiosk.hammerspoon.shutil.rmtree")
     def test_copy_hammerspoon_app_falls_back_to_user_applications(self, rmtree, copytree):
         source = Path("/tmp/Hammerspoon.app")
         copytree.side_effect = [OSError("no permission"), None]
 
         with tempfile.TemporaryDirectory() as tmp:
             user_applications = Path(tmp) / "Applications"
-            with patch("mac_kiosk.hammerspoon.USER_APPLICATIONS_DIR", user_applications):
+            with patch("kiosk.hammerspoon.USER_APPLICATIONS_DIR", user_applications):
                 destination = hammerspoon.copy_hammerspoon_app(source)
 
         self.assertEqual(destination, user_applications / "Hammerspoon.app")
@@ -178,9 +178,9 @@ class HammerspoonTests(unittest.TestCase):
         self.assertIsNone(written)
         self.assertEqual(backups, [])
 
-    @patch("mac_kiosk.hammerspoon.time.sleep")
-    @patch("mac_kiosk.hammerspoon.subprocess.run")
-    @patch("mac_kiosk.hammerspoon.hammerspoon_installed", return_value=True)
+    @patch("kiosk.hammerspoon.time.sleep")
+    @patch("kiosk.hammerspoon.subprocess.run")
+    @patch("kiosk.hammerspoon.hammerspoon_installed", return_value=True)
     def test_disable_autolaunch_and_quit(self, installed, run, sleep):
         hammerspoon.disable_hammerspoon_autolaunch_and_quit()
 

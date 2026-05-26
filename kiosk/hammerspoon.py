@@ -116,7 +116,7 @@ def install_hammerspoon_from_github_release() -> Path:
     url = hammerspoon_download_url(release)
     print(f"Installiere Hammerspoon {release} fuer macOS {version_text}.")
 
-    with tempfile.TemporaryDirectory(prefix="mac-kiosk-hammerspoon-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="kiosk-hammerspoon-") as tmp:
         temp_dir = Path(tmp)
         archive = temp_dir / f"Hammerspoon-{release}.zip"
         extracted_app = temp_dir / "Hammerspoon.app"
@@ -160,7 +160,7 @@ def ensure_hammerspoon_app() -> None:
 
 def packaged_init_lua() -> str:
     return (
-        resources.files("mac_kiosk.assets")
+        resources.files("kiosk.assets")
         .joinpath("hammerspoon_init.lua")
         .read_text(encoding="utf-8")
     )
