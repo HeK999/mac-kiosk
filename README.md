@@ -15,6 +15,7 @@ https://github.com/HeK999/mac-kiosk.git
 ## Was der Kiosk macht
 
 - startet Google Chrome im Kiosk-/App-Modus mit einer konfigurierten Website
+- kann vor dem Laden der Website einmal pro Kiosk-Start ein `.sh`- oder `.py`-Skript starten
 - richtet einen macOS LaunchAgent ein, damit der Kiosk beim Login automatisch startet
 - kann die Website automatisch neu laden
 - wartet vor dem Reload auf eine einstellbare Inaktivitätszeit
@@ -114,13 +115,37 @@ Beim ersten Start prüft das Tool:
 2. ob Google Chrome installiert ist
 3. ob Hammerspoon installiert und konfiguriert ist
 4. welche Website angezeigt werden soll
-5. ob Auto-Reload aktiv sein soll
-6. nach wie vielen Sekunden neu geladen werden soll
-7. wie lange seit der letzten Interaktion gewartet werden soll
+5. ob ein Startskript verwendet werden soll (Standard: leer)
+6. nur bei angegebenem Skript: wie viele Sekunden vor dem Kiosk-Start gewartet
+   werden soll (Standard: 10, mindestens 0)
+7. ob Auto-Reload aktiv sein soll
+8. nach wie vielen Sekunden neu geladen werden soll
+9. wie lange seit der letzten Interaktion gewartet werden soll
 
 Wenn noch kein Kiosk eingerichtet ist, führt `kiosk` durch die Einrichtung.
 Wenn bereits ein Kiosk eingerichtet ist, zeigt `kiosk` die konfigurierte Website
 und bietet an, die Einstellungen zu ändern oder den Kiosk zu deaktivieren.
+
+Für das optionale Startskript muss ein **vollständiger, absoluter Dateipfad**
+angegeben werden, z. B. `/Users/simon/scripts/start.sh` oder
+`/Users/simon/scripts/start.py`. Relative Pfade und `~` werden nicht akzeptiert.
+Vor dem Speichern prüft das Tool, ob die Datei vorhanden ist und auf `.sh` oder
+`.py` endet. Fehlende Lese- und Ausführungsrechte des Eigentümers werden ergänzt;
+andere Berechtigungen bleiben erhalten. Ist die Datei danach nicht zugänglich
+oder schlägt die Korrektur fehl, wird der Pfad nicht akzeptiert.
+
+Ohne Skript bleibt der Start unverändert und es gibt keine zusätzliche Wartezeit.
+Beim Ändern der Einstellungen behält Enter den vorhandenen Skriptpfad bei;
+`-` entfernt ihn. Die Wartezeit wird nur abgefragt, wenn ein Skript gesetzt ist.
+
+Das Skript wird beim Login bzw. bei `kiosk run` einmal gestartet, nicht bei
+automatischen Reloads oder Chrome-Startwiederholungen. `.sh` läuft mit `/bin/bash`,
+`.py` mit dem Python-Interpreter von `kiosk` (bei pipx dessen Umgebung).
+Das Arbeitsverzeichnis ist der Ordner des Skripts. Die Wartezeit beginnt nach
+dem Start des Skripts; danach wird Chrome geöffnet, auch wenn das Skript noch
+läuft, etwa als lokaler Webserver. Endet es während der Wartezeit mit einem
+Fehler, wird der Kiosk-Start abgebrochen. Beim Autostart erscheinen Ausgaben
+und Fehler unter `~/Library/Application Support/kiosk/logs/`.
 
 ## Befehle
 

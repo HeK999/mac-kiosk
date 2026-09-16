@@ -9,9 +9,11 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import time
 
 from .config import KioskConfig
+from .startup import prepare_startup_script
 
 
 CHROME_APP_NAME = "Google Chrome"
@@ -168,6 +170,18 @@ def wait_for_idle_threshold(min_idle_seconds: int) -> None:
 
 
 def run_kiosk(config: KioskConfig) -> None:
+    if config.startup_script_path:
+        if config.startup_script_delay_seconds < 0:
+            raise ValueError("Die Wartezeit vor dem Kiosk-Start darf nicht negativ sein.")
+        path = prepare_startup_script(config.startup_script_path)
+        interpreter = "/bin/bash" if path.suffix == ".sh" else sys.executable
+        print(f"Starte Startskript: {path}", flush=True)
+        startup_process = subprocess.Popen([interpreter, str(path)], cwd=path.parent)
+        wait_until_due(config.startup_script_delay_seconds)
+        returncode = startup_process.poll()
+        if returncode is not None and returncode != 0:
+            raise RuntimeError(f"Startskript fehlgeschlagen (Exit-Code {returncode}): {path}")
+
     stop_chrome()
     start_chrome_kiosk_with_retries(config.url)
 

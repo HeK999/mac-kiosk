@@ -1,10 +1,11 @@
 import io
 import tempfile
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 
-from kiosk.cli import kiosk_command, main
+from kiosk.cli import configure, kiosk_command, main, prompt_startup_script
 from kiosk.config import KioskConfig, save_config
 from kiosk.hammerspoon import HammerspoonStatus
 
@@ -92,12 +93,56 @@ class CliTests(unittest.TestCase):
     ):
         from kiosk.cli import configure
 
-        with patch("sys.stdout", new=io.StringIO()):
+        with patch("sys.stdout", new=io.StringIO()), patch("builtins.input", return_value=""):
             config = configure()
 
         self.assertEqual(config.url, "https://example.com")
         ensure_chrome.assert_called_once()
         ensure_hammerspoon.assert_called_once()
+
+    def test_configure_optional_startup_script(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "start.py"
+            script.touch()
+            cases = [
+                (None, ["example.com", "", "n"], "", 10),
+                (None, ["example.com", str(script), "", "n"], str(script), 10),
+                (None, ["example.com", str(script), "-1", "abc", "0", "n"], str(script), 0),
+                (KioskConfig("https://example.com", startup_script_path=str(script),
+                             startup_script_delay_seconds=23),
+                 ["", "", "", "n"], str(script), 23),
+                (KioskConfig("https://example.com", startup_script_path=str(script)),
+                 ["", "-", "n"], "", 10),
+            ]
+            for existing, answers, expected_path, expected_delay in cases:
+                with self.subTest(answers=answers), ExitStack() as stack:
+                    for name in ("ensure_chrome", "ensure_hammerspoon", "save_config",
+                                 "write_launch_agent", "load_launch_agent", "kiosk_command"):
+                        stack.enter_context(patch(f"kiosk.cli.{name}"))
+                    prompt = stack.enter_context(patch("builtins.input", side_effect=answers))
+                    stack.enter_context(patch("sys.stdout", new=io.StringIO()))
+                    config = configure(existing)
+                    self.assertEqual(config.startup_script_path, expected_path)
+                    self.assertEqual(config.startup_script_delay_seconds, expected_delay)
+                    self.assertEqual(prompt.call_count, len(answers))
+
+    def test_script_prompt_rejects_invalid_path_before_accepting(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "start.sh"
+            script.touch()
+            with patch("builtins.input", side_effect=["relative.sh", str(script)]) as prompt, \
+                    patch("sys.stdout", new=io.StringIO()) as stdout:
+                result = prompt_startup_script()
+            self.assertEqual(result, str(script))
+            self.assertIn("kann nicht verwendet werden", stdout.getvalue())
+            self.assertIn("vollstaendigen, absoluten Pfad", prompt.call_args.args[0])
+
+    def test_script_prompt_does_not_accept_failed_permission_correction(self):
+        with patch("kiosk.cli.prepare_startup_script", side_effect=PermissionError("chmod")), \
+                patch("builtins.input", side_effect=["/tmp/start.sh", ""]), \
+                patch("sys.stdout", new=io.StringIO()) as stdout:
+            self.assertEqual(prompt_startup_script(), "")
+        self.assertIn("chmod", stdout.getvalue())
 
     @patch("kiosk.cli.shutil.which", return_value="/usr/local/bin/kiosk")
     def test_kiosk_command_prefers_installed_console_script(self, which):

@@ -13,6 +13,7 @@ from pathlib import Path
 APP_NAME = "kiosk"
 DEFAULT_REFRESH_INTERVAL_SECONDS = 1800
 DEFAULT_MIN_IDLE_SECONDS = 90
+DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS = 10
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,8 @@ class KioskConfig:
     auto_refresh_enabled: bool = True
     refresh_interval_seconds: int = DEFAULT_REFRESH_INTERVAL_SECONDS
     min_idle_seconds: int = DEFAULT_MIN_IDLE_SECONDS
+    startup_script_path: str = ""
+    startup_script_delay_seconds: int = DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS
 
 
 def app_support_dir(home: Path | None = None) -> Path:
@@ -56,6 +59,10 @@ def load_config(path: Path | None = None) -> KioskConfig | None:
             data.get("refresh_interval_seconds", DEFAULT_REFRESH_INTERVAL_SECONDS)
         ),
         min_idle_seconds=int(data.get("min_idle_seconds", DEFAULT_MIN_IDLE_SECONDS)),
+        startup_script_path=str(data.get("startup_script_path", "")),
+        startup_script_delay_seconds=int(
+            data.get("startup_script_delay_seconds", DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS)
+        ),
     )
 
 
@@ -76,4 +83,3 @@ def delete_config(path: Path | None = None) -> bool:
         return False
     cfg_path.unlink()
     return True
-

@@ -6,6 +6,7 @@ from pathlib import Path
 from kiosk.config import (
     DEFAULT_MIN_IDLE_SECONDS,
     DEFAULT_REFRESH_INTERVAL_SECONDS,
+    DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS,
     KioskConfig,
     load_config,
     normalize_url,
@@ -36,6 +37,8 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(config.auto_refresh_enabled)
         self.assertEqual(config.refresh_interval_seconds, DEFAULT_REFRESH_INTERVAL_SECONDS)
         self.assertEqual(config.min_idle_seconds, DEFAULT_MIN_IDLE_SECONDS)
+        self.assertEqual(config.startup_script_path, "")
+        self.assertEqual(config.startup_script_delay_seconds, DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS)
 
     def test_save_and_load_config(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -45,6 +48,8 @@ class ConfigTests(unittest.TestCase):
                 auto_refresh_enabled=False,
                 refresh_interval_seconds=42,
                 min_idle_seconds=9,
+                startup_script_path="/Users/simon/start.py",
+                startup_script_delay_seconds=25,
             )
             save_config(original, path)
             loaded = load_config(path)
@@ -54,4 +59,3 @@ class ConfigTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

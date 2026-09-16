@@ -14,6 +14,7 @@ from typing import NamedTuple
 from .config import (
     DEFAULT_MIN_IDLE_SECONDS,
     DEFAULT_REFRESH_INTERVAL_SECONDS,
+    DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS,
     KioskConfig,
     config_path,
     delete_config,
@@ -33,6 +34,7 @@ from .hammerspoon import (
     get_hammerspoon_status,
 )
 from .system import ensure_chrome, run_kiosk
+from .startup import prepare_startup_script
 
 
 class KioskCommand(NamedTuple):
@@ -51,6 +53,9 @@ def print_status() -> KioskConfig | None:
     refresh = "aktiv" if config.auto_refresh_enabled else "deaktiviert"
     print("Kiosk ist eingerichtet.")
     print(f"Website: {config.url}")
+    print(f"Startskript: {config.startup_script_path or 'keines'}")
+    if config.startup_script_path:
+        print(f"Wartezeit vor Kiosk-Start: {config.startup_script_delay_seconds}s")
     print(f"Auto-Reload: {refresh}")
     if config.auto_refresh_enabled:
         print(f"Reload-Intervall: {config.refresh_interval_seconds}s")
@@ -123,6 +128,24 @@ def kiosk_command() -> KioskCommand:
     return KioskCommand([sys.executable, str(script_path)])
 
 
+def prompt_startup_script(existing: str = "") -> str:
+    suffix = f" [{existing}; - zum Entfernen]" if existing else " [leer = keines]"
+    while True:
+        answer = input(
+            "Optionales Startskript: vollstaendigen, absoluten Pfad zu einer "
+            f".sh- oder .py-Datei angeben (z. B. /Users/name/start.sh){suffix}: "
+        ).strip()
+        if answer == "-":
+            return ""
+        value = answer or existing
+        if not value:
+            return ""
+        try:
+            return str(prepare_startup_script(value))
+        except (ValueError, OSError) as exc:
+            print(f"Startskript kann nicht verwendet werden: {exc}")
+
+
 def configure(existing: KioskConfig | None = None) -> KioskConfig:
     print("Pruefe Google Chrome...")
     ensure_chrome()
@@ -134,6 +157,14 @@ def configure(existing: KioskConfig | None = None) -> KioskConfig:
     )
 
     url = prompt_url(existing.url if existing else None)
+    startup_script_path = prompt_startup_script(existing.startup_script_path if existing else "")
+    startup_script_delay_seconds = DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS
+    if startup_script_path:
+        startup_script_delay_seconds = prompt_int(
+            "Wie viele Sekunden nach dem Start des Skripts soll der Kiosk geladen werden?",
+            existing.startup_script_delay_seconds if existing else DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS,
+            minimum=0,
+        )
     auto_refresh_enabled = prompt_bool(
         "Soll die Seite automatisch neu geladen werden?",
         existing.auto_refresh_enabled if existing else True,
@@ -160,6 +191,8 @@ def configure(existing: KioskConfig | None = None) -> KioskConfig:
         auto_refresh_enabled=auto_refresh_enabled,
         refresh_interval_seconds=refresh_interval_seconds,
         min_idle_seconds=min_idle_seconds,
+        startup_script_path=startup_script_path,
+        startup_script_delay_seconds=startup_script_delay_seconds,
     )
     save_config(config)
 
