@@ -15,9 +15,6 @@ import subprocess
 import tempfile
 import time
 
-from .system import homebrew_executable
-
-
 HAMMERSPOON_APP_NAME = "Hammerspoon"
 HAMMERSPOON_APP_PATHS = (
     Path("/Applications/Hammerspoon.app"),
@@ -69,6 +66,15 @@ def macos_version() -> tuple[int, int]:
     return 0, 0
 
 
+def macos_architecture() -> str:
+    architecture = platform.machine().lower()
+    if architecture in {"amd64", "x64"}:
+        return "x86_64"
+    if architecture == "aarch64":
+        return "arm64"
+    return architecture or "unbekannt"
+
+
 def hammerspoon_release_for_macos(version: tuple[int, int]) -> str:
     major, minor = version
     if major == 10 and minor < 15:
@@ -89,22 +95,6 @@ def hammerspoon_download_url(release: str) -> str:
     )
 
 
-def install_hammerspoon_with_homebrew() -> None:
-    brew = homebrew_executable()
-    if brew is None:
-        raise RuntimeError("Homebrew ist nicht installiert.")
-
-    subprocess.run([brew, "install", "--cask", "hammerspoon"], check=True)
-
-
-def reinstall_hammerspoon_with_homebrew() -> None:
-    brew = homebrew_executable()
-    if brew is None:
-        raise RuntimeError("Homebrew ist nicht installiert.")
-
-    subprocess.run([brew, "reinstall", "--cask", "hammerspoon"], check=True)
-
-
 def copy_hammerspoon_app(source: Path) -> Path:
     destination = APPLICATIONS_DIR / "Hammerspoon.app"
     try:
@@ -123,10 +113,14 @@ def copy_hammerspoon_app(source: Path) -> Path:
 
 def install_hammerspoon_from_github_release() -> Path:
     detected_macos_version = macos_version()
+    detected_architecture = macos_architecture()
     release = hammerspoon_release_for_macos(detected_macos_version)
     version_text = ".".join(str(part) for part in detected_macos_version)
     url = hammerspoon_download_url(release)
-    print(f"Installiere Hammerspoon {release} fuer macOS {version_text}.")
+    print(
+        f"Installiere Hammerspoon {release} fuer macOS {version_text} "
+        f"({detected_architecture})."
+    )
 
     with tempfile.TemporaryDirectory(prefix="kiosk-hammerspoon-") as tmp:
         temp_dir = Path(tmp)
@@ -160,27 +154,9 @@ def ensure_hammerspoon_app() -> None:
     if hammerspoon_installed():
         return
 
-    if homebrew_executable() is not None:
-        try:
-            install_hammerspoon_with_homebrew()
-            if hammerspoon_installed():
-                return
-
-            print(
-                "Homebrew meldet Hammerspoon als installiert, aber "
-                "Hammerspoon.app fehlt. Installiere den Cask neu."
-            )
-            reinstall_hammerspoon_with_homebrew()
-            if hammerspoon_installed():
-                return
-
-            raise RuntimeError(
-                "Homebrew hat Hammerspoon installiert, aber Hammerspoon.app "
-                "wurde nicht in einem Programme-Ordner gefunden."
-            )
-        except (RuntimeError, subprocess.CalledProcessError) as exc:
-            print(f"Homebrew-Installation von Hammerspoon fehlgeschlagen: {exc}")
-
+    # Official releases have been Universal binaries since 0.9.82. Installing
+    # the macOS-compatible release directly avoids relying on Homebrew, whose
+    # Intel macOS support is now best-effort only.
     install_hammerspoon_from_github_release()
 
 

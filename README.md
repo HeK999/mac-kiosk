@@ -45,10 +45,11 @@ Der LaunchAgent liegt unter:
 Google Chrome wird beim Setup geprüft. Wenn Chrome fehlt, versucht `kiosk`,
 Chrome über Homebrew zu installieren.
 
-Hammerspoon wird ebenfalls geprüft. Wenn Homebrew vorhanden ist, wird zuerst
-Homebrew verwendet. Wenn Homebrew fehlt oder auf alten Systemen nicht läuft,
-lädt `kiosk` automatisch ein passendes offizielles Hammerspoon-Release von
-GitHub herunter und installiert `Hammerspoon.app` direkt.
+Hammerspoon wird ebenfalls geprüft. `kiosk` lädt automatisch ein zur
+installierten macOS-Version passendes offizielles Hammerspoon-Release von
+GitHub herunter und installiert `Hammerspoon.app` direkt. Die offiziellen
+Releases sind Universal-Builds für Intel und Apple Silicon; Homebrew wird für
+Hammerspoon deshalb nicht benötigt.
 
 ## pipx installieren
 
@@ -191,8 +192,9 @@ fragen. Falls der Edge-Blocker nicht funktioniert, Hammerspoon hier erlauben:
 Systemeinstellungen > Datenschutz & Sicherheit > Bedienungshilfen
 ```
 
-Auf alten macOS-Versionen installiert `kiosk` automatisch eine passende
-Hammerspoon-Version:
+`kiosk` installiert automatisch eine zur macOS-Version passende
+Hammerspoon-Version. Alle hier verwendeten Releases unterstützen Intel und
+Apple Silicon:
 
 - macOS 10.14 und älter: Hammerspoon 0.9.91
 - macOS 10.15: Hammerspoon 0.9.96

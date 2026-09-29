@@ -28,25 +28,13 @@ class HammerspoonTests(unittest.TestCase):
 
         self.assertIs(hammerspoon.hammerspoon_app_path(), existing)
 
-    @patch("kiosk.hammerspoon.subprocess.run")
-    @patch("kiosk.hammerspoon.homebrew_executable", return_value="/opt/homebrew/bin/brew")
-    def test_install_hammerspoon_uses_homebrew_cask(self, homebrew_executable, run):
-        hammerspoon.install_hammerspoon_with_homebrew()
+    @patch("kiosk.hammerspoon.platform.machine", return_value="x86_64")
+    def test_macos_architecture_detects_intel(self, machine):
+        self.assertEqual(hammerspoon.macos_architecture(), "x86_64")
 
-        run.assert_called_once_with(
-            ["/opt/homebrew/bin/brew", "install", "--cask", "hammerspoon"],
-            check=True,
-        )
-
-    @patch("kiosk.hammerspoon.subprocess.run")
-    @patch("kiosk.hammerspoon.homebrew_executable", return_value="/usr/local/bin/brew")
-    def test_reinstall_hammerspoon_uses_homebrew_cask(self, homebrew_executable, run):
-        hammerspoon.reinstall_hammerspoon_with_homebrew()
-
-        run.assert_called_once_with(
-            ["/usr/local/bin/brew", "reinstall", "--cask", "hammerspoon"],
-            check=True,
-        )
+    @patch("kiosk.hammerspoon.platform.machine", return_value="aarch64")
+    def test_macos_architecture_normalizes_apple_silicon(self, machine):
+        self.assertEqual(hammerspoon.macos_architecture(), "arm64")
 
     def test_hammerspoon_release_for_mojave(self):
         self.assertEqual(hammerspoon.hammerspoon_release_for_macos((10, 14)), "0.9.91")
@@ -65,122 +53,36 @@ class HammerspoonTests(unittest.TestCase):
         self.assertEqual(hammerspoon.hammerspoon_release_for_macos((14, 0)), "1.1.1")
 
     @patch("kiosk.hammerspoon.install_hammerspoon_from_github_release")
-    @patch("kiosk.hammerspoon.reinstall_hammerspoon_with_homebrew")
-    @patch("kiosk.hammerspoon.install_hammerspoon_with_homebrew")
-    @patch("kiosk.hammerspoon.homebrew_executable", return_value="/opt/homebrew/bin/brew")
-    @patch("kiosk.hammerspoon.hammerspoon_installed", side_effect=[False, True])
-    def test_ensure_hammerspoon_app_uses_homebrew_when_available(
-        self,
-        installed,
-        homebrew_executable,
-        install_homebrew,
-        reinstall_homebrew,
-        install_release,
+    @patch("kiosk.hammerspoon.hammerspoon_installed", return_value=False)
+    def test_ensure_hammerspoon_app_uses_official_release(self, installed, install_release):
+        hammerspoon.ensure_hammerspoon_app()
+
+        install_release.assert_called_once()
+
+    @patch("kiosk.hammerspoon.install_hammerspoon_from_github_release")
+    @patch("kiosk.hammerspoon.hammerspoon_installed", return_value=True)
+    def test_ensure_hammerspoon_app_keeps_existing_installation(
+        self, installed, install_release
     ):
         hammerspoon.ensure_hammerspoon_app()
 
-        install_homebrew.assert_called_once()
-        reinstall_homebrew.assert_not_called()
         install_release.assert_not_called()
-
-    @patch("kiosk.hammerspoon.install_hammerspoon_from_github_release")
-    @patch("kiosk.hammerspoon.reinstall_hammerspoon_with_homebrew")
-    @patch("kiosk.hammerspoon.install_hammerspoon_with_homebrew")
-    @patch("kiosk.hammerspoon.homebrew_executable", return_value="/usr/local/bin/brew")
-    @patch("kiosk.hammerspoon.hammerspoon_installed", side_effect=[False, False, True])
-    def test_ensure_hammerspoon_app_repairs_stale_homebrew_cask(
-        self,
-        installed,
-        homebrew_executable,
-        install_homebrew,
-        reinstall_homebrew,
-        install_release,
-    ):
-        with patch("sys.stdout", new=io.StringIO()):
-            hammerspoon.ensure_hammerspoon_app()
-
-        install_homebrew.assert_called_once()
-        reinstall_homebrew.assert_called_once()
-        install_release.assert_not_called()
-
-    @patch("kiosk.hammerspoon.install_hammerspoon_from_github_release")
-    @patch("kiosk.hammerspoon.reinstall_hammerspoon_with_homebrew")
-    @patch("kiosk.hammerspoon.install_hammerspoon_with_homebrew")
-    @patch("kiosk.hammerspoon.homebrew_executable", return_value=None)
-    @patch("kiosk.hammerspoon.hammerspoon_installed", return_value=False)
-    def test_ensure_hammerspoon_app_uses_release_when_homebrew_missing(
-        self,
-        installed,
-        homebrew_executable,
-        install_homebrew,
-        reinstall_homebrew,
-        install_release,
-    ):
-        hammerspoon.ensure_hammerspoon_app()
-
-        install_homebrew.assert_not_called()
-        reinstall_homebrew.assert_not_called()
-        install_release.assert_called_once()
-
-    @patch("kiosk.hammerspoon.install_hammerspoon_from_github_release")
-    @patch("kiosk.hammerspoon.reinstall_hammerspoon_with_homebrew")
-    @patch(
-        "kiosk.hammerspoon.install_hammerspoon_with_homebrew",
-        side_effect=RuntimeError("brew failed"),
-    )
-    @patch("kiosk.hammerspoon.homebrew_executable", return_value="/opt/homebrew/bin/brew")
-    @patch("kiosk.hammerspoon.hammerspoon_installed", return_value=False)
-    def test_ensure_hammerspoon_app_falls_back_when_homebrew_fails(
-        self,
-        installed,
-        homebrew_executable,
-        install_homebrew,
-        reinstall_homebrew,
-        install_release,
-    ):
-        with patch("sys.stdout", new=io.StringIO()):
-            hammerspoon.ensure_hammerspoon_app()
-
-        install_homebrew.assert_called_once()
-        reinstall_homebrew.assert_not_called()
-        install_release.assert_called_once()
-
-    @patch("kiosk.hammerspoon.install_hammerspoon_from_github_release")
-    @patch(
-        "kiosk.hammerspoon.reinstall_hammerspoon_with_homebrew",
-        side_effect=RuntimeError("reinstall failed"),
-    )
-    @patch("kiosk.hammerspoon.install_hammerspoon_with_homebrew")
-    @patch("kiosk.hammerspoon.homebrew_executable", return_value="/usr/local/bin/brew")
-    @patch("kiosk.hammerspoon.hammerspoon_installed", side_effect=[False, False])
-    def test_ensure_hammerspoon_app_falls_back_when_homebrew_repair_fails(
-        self,
-        installed,
-        homebrew_executable,
-        install_homebrew,
-        reinstall_homebrew,
-        install_release,
-    ):
-        with patch("sys.stdout", new=io.StringIO()):
-            hammerspoon.ensure_hammerspoon_app()
-
-        install_homebrew.assert_called_once()
-        reinstall_homebrew.assert_called_once()
-        install_release.assert_called_once()
 
     @patch("kiosk.hammerspoon.copy_hammerspoon_app", return_value=Path("/Applications/Hammerspoon.app"))
+    @patch("kiosk.hammerspoon.macos_architecture", return_value="x86_64")
     @patch("kiosk.hammerspoon.macos_version", return_value=(10, 14))
     @patch("kiosk.hammerspoon.subprocess.run")
     def test_install_from_github_release_downloads_unzips_and_copies(
         self,
         run,
         macos_version,
+        macos_architecture,
         copy_hammerspoon_app,
     ):
         run.return_value.returncode = 0
 
         with patch("kiosk.hammerspoon.Path.exists", return_value=True):
-            with patch("sys.stdout", new=io.StringIO()):
+            with patch("sys.stdout", new=io.StringIO()) as stdout:
                 installed_path = hammerspoon.install_hammerspoon_from_github_release()
 
         self.assertEqual(installed_path, Path("/Applications/Hammerspoon.app"))
@@ -192,6 +94,7 @@ class HammerspoonTests(unittest.TestCase):
         )
         self.assertEqual(commands[1][0:2], ["/usr/bin/unzip", "-q"])
         copy_hammerspoon_app.assert_called_once()
+        self.assertIn("macOS 10.14 (x86_64)", stdout.getvalue())
 
     @patch("kiosk.hammerspoon.shutil.copytree")
     @patch("kiosk.hammerspoon.shutil.rmtree")
