@@ -198,7 +198,7 @@ Hammerspoon-Version:
 - macOS 10.15: Hammerspoon 0.9.96
 - macOS 11: Hammerspoon 0.9.100
 - macOS 12: Hammerspoon 1.0.0
-- macOS 13 und neuer: Hammerspoon 1.1.0
+- macOS 13 und neuer: Hammerspoon 1.1.1
 
 ## Aktualisieren
 

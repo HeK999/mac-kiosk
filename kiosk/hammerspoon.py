@@ -79,7 +79,7 @@ def hammerspoon_release_for_macos(version: tuple[int, int]) -> str:
         return "0.9.100"
     if major == 12:
         return "1.0.0"
-    return "1.1.0"
+    return "1.1.1"
 
 
 def hammerspoon_download_url(release: str) -> str:
@@ -95,6 +95,14 @@ def install_hammerspoon_with_homebrew() -> None:
         raise RuntimeError("Homebrew ist nicht installiert.")
 
     subprocess.run([brew, "install", "--cask", "hammerspoon"], check=True)
+
+
+def reinstall_hammerspoon_with_homebrew() -> None:
+    brew = homebrew_executable()
+    if brew is None:
+        raise RuntimeError("Homebrew ist nicht installiert.")
+
+    subprocess.run([brew, "reinstall", "--cask", "hammerspoon"], check=True)
 
 
 def copy_hammerspoon_app(source: Path) -> Path:
@@ -155,7 +163,21 @@ def ensure_hammerspoon_app() -> None:
     if homebrew_executable() is not None:
         try:
             install_hammerspoon_with_homebrew()
-            return
+            if hammerspoon_installed():
+                return
+
+            print(
+                "Homebrew meldet Hammerspoon als installiert, aber "
+                "Hammerspoon.app fehlt. Installiere den Cask neu."
+            )
+            reinstall_hammerspoon_with_homebrew()
+            if hammerspoon_installed():
+                return
+
+            raise RuntimeError(
+                "Homebrew hat Hammerspoon installiert, aber Hammerspoon.app "
+                "wurde nicht in einem Programme-Ordner gefunden."
+            )
         except (RuntimeError, subprocess.CalledProcessError) as exc:
             print(f"Homebrew-Installation von Hammerspoon fehlgeschlagen: {exc}")
 
