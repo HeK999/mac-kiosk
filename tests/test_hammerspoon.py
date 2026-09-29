@@ -18,6 +18,16 @@ class HammerspoonTests(unittest.TestCase):
 
         self.assertTrue(hammerspoon.hammerspoon_installed())
 
+    @patch("kiosk.hammerspoon.HAMMERSPOON_APP_PATHS")
+    def test_hammerspoon_app_path_returns_first_existing_path(self, paths):
+        missing = Mock()
+        existing = Mock()
+        missing.exists.return_value = False
+        existing.exists.return_value = True
+        paths.__iter__.return_value = iter([missing, existing])
+
+        self.assertIs(hammerspoon.hammerspoon_app_path(), existing)
+
     @patch("kiosk.hammerspoon.subprocess.run")
     @patch("kiosk.hammerspoon.homebrew_executable", return_value="/opt/homebrew/bin/brew")
     def test_install_hammerspoon_uses_homebrew_cask(self, homebrew_executable, run):
@@ -177,6 +187,26 @@ class HammerspoonTests(unittest.TestCase):
 
         self.assertIsNone(written)
         self.assertEqual(backups, [])
+
+    @patch("kiosk.hammerspoon.time.sleep")
+    @patch("kiosk.hammerspoon.subprocess.run")
+    @patch(
+        "kiosk.hammerspoon.hammerspoon_app_path",
+        return_value=Path("/Applications/Hammerspoon.app"),
+    )
+    def test_start_hammerspoon_opens_app_bundle_directly(self, app_path, run, sleep):
+        hammerspoon.start_hammerspoon()
+
+        run.assert_called_once_with(
+            ["open", "/Applications/Hammerspoon.app"],
+            check=True,
+        )
+        sleep.assert_called_once_with(2)
+
+    @patch("kiosk.hammerspoon.hammerspoon_app_path", return_value=None)
+    def test_start_hammerspoon_reports_missing_app(self, app_path):
+        with self.assertRaisesRegex(RuntimeError, "nach der Installation nicht gefunden"):
+            hammerspoon.start_hammerspoon()
 
     @patch("kiosk.hammerspoon.time.sleep")
     @patch("kiosk.hammerspoon.subprocess.run")

@@ -40,6 +40,10 @@ def hammerspoon_installed() -> bool:
     return any(path.exists() for path in HAMMERSPOON_APP_PATHS)
 
 
+def hammerspoon_app_path() -> Path | None:
+    return next((path for path in HAMMERSPOON_APP_PATHS if path.exists()), None)
+
+
 def parse_macos_version(version: str) -> tuple[int, int]:
     parts = version.split(".")
     major = int(parts[0]) if parts and parts[0] else 0
@@ -187,7 +191,14 @@ def install_hammerspoon_config(config_path: Path | None = None) -> Path | None:
 
 
 def start_hammerspoon() -> None:
-    subprocess.run(["open", "-a", HAMMERSPOON_APP_NAME], check=True)
+    app_path = hammerspoon_app_path()
+    if app_path is None:
+        raise RuntimeError("Hammerspoon.app wurde nach der Installation nicht gefunden.")
+
+    # Open the bundle directly. Immediately after a Homebrew installation,
+    # Launch Services may not know the application name yet, so `open -a`
+    # can fail even though the app exists in /Applications.
+    subprocess.run(["open", str(app_path)], check=True)
     time.sleep(2)
 
 
