@@ -181,12 +181,6 @@ def configure(existing: KioskConfig | None = None) -> KioskConfig:
     print("Pruefe Google Chrome...")
     ensure_chrome()
     password_salt, password_hash = prompt_edge_blocker_password(existing)
-    print("Pruefe Hammerspoon...")
-    ensure_hammerspoon(password_salt, password_hash)
-    print(
-        "Hinweis: Hammerspoon benoetigt eventuell Zugriff unter "
-        "Systemeinstellungen > Datenschutz & Sicherheit > Bedienungshilfen."
-    )
 
     url = prompt_url(existing.url if existing else None)
     startup_script_path = prompt_startup_script(existing.startup_script_path if existing else "")
@@ -229,6 +223,13 @@ def configure(existing: KioskConfig | None = None) -> KioskConfig:
         edge_blocker_password_hash=password_hash,
     )
     save_config(config)
+
+    print("Pruefe Hammerspoon...")
+    ensure_hammerspoon(password_salt, password_hash)
+    print(
+        "Hinweis: Hammerspoon benoetigt eventuell Zugriff unter "
+        "Systemeinstellungen > Datenschutz & Sicherheit > Bedienungshilfen."
+    )
 
     command = kiosk_command()
     plist_path = write_launch_agent(command.arguments, working_directory=command.working_directory)

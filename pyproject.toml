@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kiosk"
-version = "0.1.1"
+version = "0.1.2"
 description = "macOS Chrome kiosk launcher with pipx-installable CLI."
 readme = "README.md"
 requires-python = ">=3.10"

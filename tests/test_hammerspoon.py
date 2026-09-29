@@ -116,7 +116,8 @@ class HammerspoonTests(unittest.TestCase):
 
         self.assertIn("hs.autoLaunch(true)", content)
         self.assertIn("startEdgeBlocker()", content)
-        self.assertIn("edgeBlockerPasswordAccepted()", content)
+        self.assertIn("startEdgeBlockerPasswordPrompt()", content)
+        self.assertIn('EDGE_BLOCKER_TOGGLE_MODS = {"shift", "alt"}', content)
         self.assertNotIn("__PASSWORD_SALT__", content)
         self.assertNotIn("__PASSWORD_HASH__", content)
 
@@ -125,8 +126,18 @@ class HammerspoonTests(unittest.TestCase):
 
         self.assertIn('EDGE_BLOCKER_PASSWORD_SALT = "test-salt"', content)
         self.assertIn('EDGE_BLOCKER_PASSWORD_HASH = "test-hash"', content)
-        self.assertIn("hs.dialog.textPrompt", content)
+        self.assertNotIn("hs.dialog.textPrompt", content)
         self.assertIn("hs.hash.SHA256", content)
+
+    def test_packaged_init_lua_blocks_disallowed_keyboard_events(self):
+        content = hammerspoon.packaged_init_lua()
+
+        self.assertIn("function handleKeyboardEvent(event)", content)
+        self.assertIn("hs.eventtap.event.types.keyDown", content)
+        self.assertIn("hs.eventtap.event.types.flagsChanged", content)
+        self.assertIn("hs.eventtap.event.types.systemDefined", content)
+        self.assertIn("return flags.cmd or flags.ctrl or flags.fn", content)
+        self.assertIn("startKeyboardBlocker()", content)
 
     def test_install_hammerspoon_config_writes_config(self):
         with tempfile.TemporaryDirectory() as tmp:

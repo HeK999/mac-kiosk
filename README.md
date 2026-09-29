@@ -192,12 +192,25 @@ fragen. Falls der Edge-Blocker nicht funktioniert, Hammerspoon hier erlauben:
 Systemeinstellungen > Datenschutz & Sicherheit > Bedienungshilfen
 ```
 
-Der Edge-Blocker kann mit `Cmd+Alt+Ctrl+K` umgeschaltet werden. Beim
+Der Edge-Blocker kann mit `Shift+Alt+K` umgeschaltet werden. Beim
 Deaktivieren wird ein Passwort verlangt; das Standardpasswort ist `951951`.
 Während `kiosk` eingerichtet oder neu konfiguriert wird, kann ein anderes
 Passwort eingegeben werden. Das Passwort selbst wird nicht gespeichert,
 sondern nur ein gesalzener SHA-256-Hash. Das erneute Aktivieren und der Befehl
 `kiosk disable` benötigen kein Passwort.
+
+Solange der Edge-Blocker aktiv ist, sind nur Buchstaben, Zahlen, Satzzeichen,
+Leertaste, Enter, Shift, Alt und die Pfeiltasten freigegeben. Unter anderem
+werden Command, Control, Tab, Escape, Funktions- und Sondertasten blockiert,
+sodass Systemkombinationen wie `Cmd+Tab` nicht ausgeführt werden. Die
+Passworteingabe wird von Hammerspoon selbst maskiert und erlaubt Backspace,
+Enter sowie Escape, ohne den Tastaturfilter vorübergehend abzuschalten.
+
+Der Filter ist ein Hammerspoon-Schutz und kein vollständig manipulationssicherer
+macOS-Kioskmodus. Wenn eine andere Anwendung macOS Secure Input aktiviert, kann
+Hammerspoon Tastaturereignisse vorübergehend nicht abfangen. Für öffentlich
+zugängliche Geräte sollte zusätzlich ein eingeschränktes Benutzerkonto oder
+eine MDM-Kioskrichtlinie verwendet werden.
 
 `kiosk` installiert automatisch eine zur macOS-Version passende
 Hammerspoon-Version. Alle hier verwendeten Releases unterstützen Intel und
