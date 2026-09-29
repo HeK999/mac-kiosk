@@ -28,11 +28,13 @@ Die Konfiguration liegt unter:
 ~/Library/Application Support/kiosk/config.json
 ```
 
-Der LaunchAgent liegt unter:
+Der LaunchAgent liegt im benutzerspezifischen LaunchAgents-Verzeichnis:
 
 ```sh
-~/Library/LaunchAgents/com.simonkrieger.kiosk.plist
+~/Library/LaunchAgents/<kiosk-launch-agent>.plist
 ```
+
+Den tatsächlich verwendeten Dateinamen zeigt `kiosk status` an.
 
 ## Voraussetzungen
 
