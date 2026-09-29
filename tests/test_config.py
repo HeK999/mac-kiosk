@@ -4,10 +4,14 @@ import unittest
 from pathlib import Path
 
 from kiosk.config import (
+    DEFAULT_EDGE_BLOCKER_PASSWORD_HASH,
+    DEFAULT_EDGE_BLOCKER_PASSWORD_SALT,
     DEFAULT_MIN_IDLE_SECONDS,
     DEFAULT_REFRESH_INTERVAL_SECONDS,
     DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS,
     KioskConfig,
+    create_edge_blocker_password,
+    hash_edge_blocker_password,
     load_config,
     normalize_url,
     save_config,
@@ -39,6 +43,26 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.min_idle_seconds, DEFAULT_MIN_IDLE_SECONDS)
         self.assertEqual(config.startup_script_path, "")
         self.assertEqual(config.startup_script_delay_seconds, DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS)
+        self.assertEqual(
+            config.edge_blocker_password_salt, DEFAULT_EDGE_BLOCKER_PASSWORD_SALT
+        )
+        self.assertEqual(
+            config.edge_blocker_password_hash, DEFAULT_EDGE_BLOCKER_PASSWORD_HASH
+        )
+
+    def test_default_edge_blocker_password_is_951951(self):
+        self.assertEqual(
+            hash_edge_blocker_password("951951", DEFAULT_EDGE_BLOCKER_PASSWORD_SALT),
+            DEFAULT_EDGE_BLOCKER_PASSWORD_HASH,
+        )
+
+    def test_create_edge_blocker_password_uses_random_salt(self):
+        first_salt, first_hash = create_edge_blocker_password("secret")
+        second_salt, second_hash = create_edge_blocker_password("secret")
+
+        self.assertNotEqual(first_salt, second_salt)
+        self.assertNotEqual(first_hash, second_hash)
+        self.assertEqual(first_hash, hash_edge_blocker_password("secret", first_salt))
 
     def test_save_and_load_config(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -50,6 +74,8 @@ class ConfigTests(unittest.TestCase):
                 min_idle_seconds=9,
                 startup_script_path="/Users/simon/start.py",
                 startup_script_delay_seconds=25,
+                edge_blocker_password_salt="custom-salt",
+                edge_blocker_password_hash="custom-hash",
             )
             save_config(original, path)
             loaded = load_config(path)

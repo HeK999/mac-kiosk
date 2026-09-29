@@ -5,8 +5,20 @@ from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 
-from kiosk.cli import configure, kiosk_command, main, prompt_startup_script
-from kiosk.config import KioskConfig, save_config
+from kiosk.cli import (
+    configure,
+    kiosk_command,
+    main,
+    prompt_edge_blocker_password,
+    prompt_startup_script,
+)
+from kiosk.config import (
+    DEFAULT_EDGE_BLOCKER_PASSWORD_HASH,
+    DEFAULT_EDGE_BLOCKER_PASSWORD_SALT,
+    KioskConfig,
+    hash_edge_blocker_password,
+    save_config,
+)
 from kiosk.hammerspoon import HammerspoonStatus
 
 
@@ -78,12 +90,17 @@ class CliTests(unittest.TestCase):
     @patch("kiosk.cli.prompt_int", side_effect=[1800, 90])
     @patch("kiosk.cli.prompt_bool", return_value=True)
     @patch("kiosk.cli.prompt_url", return_value="https://example.com")
+    @patch(
+        "kiosk.cli.prompt_edge_blocker_password",
+        return_value=("password-salt", "password-hash"),
+    )
     @patch("kiosk.cli.ensure_hammerspoon")
     @patch("kiosk.cli.ensure_chrome")
     def test_configure_runs_chrome_and_hammerspoon_setup(
         self,
         ensure_chrome,
         ensure_hammerspoon,
+        prompt_edge_blocker_password,
         prompt_url,
         prompt_bool,
         prompt_int,
@@ -97,8 +114,37 @@ class CliTests(unittest.TestCase):
             config = configure()
 
         self.assertEqual(config.url, "https://example.com")
+        self.assertEqual(config.edge_blocker_password_salt, "password-salt")
+        self.assertEqual(config.edge_blocker_password_hash, "password-hash")
         ensure_chrome.assert_called_once()
-        ensure_hammerspoon.assert_called_once()
+        ensure_hammerspoon.assert_called_once_with("password-salt", "password-hash")
+
+    @patch("kiosk.cli.getpass.getpass", return_value="")
+    def test_password_prompt_uses_951951_by_default(self, getpass):
+        salt, password_hash = prompt_edge_blocker_password()
+
+        self.assertEqual(salt, DEFAULT_EDGE_BLOCKER_PASSWORD_SALT)
+        self.assertEqual(password_hash, DEFAULT_EDGE_BLOCKER_PASSWORD_HASH)
+        self.assertEqual(password_hash, hash_edge_blocker_password("951951", salt))
+
+    @patch("kiosk.cli.create_edge_blocker_password", return_value=("salt", "hash"))
+    @patch("kiosk.cli.getpass.getpass", side_effect=["custom", "custom"])
+    def test_password_prompt_accepts_override(self, getpass, create_password):
+        self.assertEqual(prompt_edge_blocker_password(), ("salt", "hash"))
+        create_password.assert_called_once_with("custom")
+
+    @patch("kiosk.cli.getpass.getpass", return_value="")
+    def test_password_prompt_keeps_existing_password(self, getpass):
+        existing = KioskConfig(
+            "https://example.com",
+            edge_blocker_password_salt="existing-salt",
+            edge_blocker_password_hash="existing-hash",
+        )
+
+        self.assertEqual(
+            prompt_edge_blocker_password(existing),
+            ("existing-salt", "existing-hash"),
+        )
 
     def test_configure_optional_startup_script(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -119,6 +165,12 @@ class CliTests(unittest.TestCase):
                     for name in ("ensure_chrome", "ensure_hammerspoon", "save_config",
                                  "write_launch_agent", "load_launch_agent", "kiosk_command"):
                         stack.enter_context(patch(f"kiosk.cli.{name}"))
+                    stack.enter_context(
+                        patch(
+                            "kiosk.cli.prompt_edge_blocker_password",
+                            return_value=("salt", "hash"),
+                        )
+                    )
                     prompt = stack.enter_context(patch("builtins.input", side_effect=answers))
                     stack.enter_context(patch("sys.stdout", new=io.StringIO()))
                     config = configure(existing)

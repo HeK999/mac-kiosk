@@ -192,6 +192,13 @@ fragen. Falls der Edge-Blocker nicht funktioniert, Hammerspoon hier erlauben:
 Systemeinstellungen > Datenschutz & Sicherheit > Bedienungshilfen
 ```
 
+Der Edge-Blocker kann mit `Cmd+Alt+Ctrl+K` umgeschaltet werden. Beim
+Deaktivieren wird ein Passwort verlangt; das Standardpasswort ist `951951`.
+Während `kiosk` eingerichtet oder neu konfiguriert wird, kann ein anderes
+Passwort eingegeben werden. Das Passwort selbst wird nicht gespeichert,
+sondern nur ein gesalzener SHA-256-Hash. Das erneute Aktivieren und der Befehl
+`kiosk disable` benötigen kein Passwort.
+
 `kiosk` installiert automatisch eine zur macOS-Version passende
 Hammerspoon-Version. Alle hier verwendeten Releases unterstützen Intel und
 Apple Silicon:

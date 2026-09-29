@@ -6,6 +6,7 @@ Creator: Simon Krieger
 from __future__ import annotations
 
 import argparse
+import getpass
 from pathlib import Path
 import shutil
 import sys
@@ -13,9 +14,12 @@ from typing import NamedTuple
 
 from .config import (
     DEFAULT_MIN_IDLE_SECONDS,
+    DEFAULT_EDGE_BLOCKER_PASSWORD_HASH,
+    DEFAULT_EDGE_BLOCKER_PASSWORD_SALT,
     DEFAULT_REFRESH_INTERVAL_SECONDS,
     DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS,
     KioskConfig,
+    create_edge_blocker_password,
     config_path,
     delete_config,
     load_config,
@@ -146,11 +150,39 @@ def prompt_startup_script(existing: str = "") -> str:
             print(f"Startskript kann nicht verwendet werden: {exc}")
 
 
+def prompt_edge_blocker_password(
+    existing: KioskConfig | None = None,
+) -> tuple[str, str]:
+    if existing is None:
+        prompt = "Passwort fuer Edge-Blocker [Enter = 951951]: "
+    else:
+        prompt = "Neues Edge-Blocker-Passwort [Enter = beibehalten]: "
+
+    while True:
+        password = getpass.getpass(prompt)
+        if not password:
+            if existing is not None:
+                return (
+                    existing.edge_blocker_password_salt,
+                    existing.edge_blocker_password_hash,
+                )
+            return (
+                DEFAULT_EDGE_BLOCKER_PASSWORD_SALT,
+                DEFAULT_EDGE_BLOCKER_PASSWORD_HASH,
+            )
+
+        confirmation = getpass.getpass("Passwort wiederholen: ")
+        if password == confirmation:
+            return create_edge_blocker_password(password)
+        print("Die Passwoerter stimmen nicht ueberein.")
+
+
 def configure(existing: KioskConfig | None = None) -> KioskConfig:
     print("Pruefe Google Chrome...")
     ensure_chrome()
+    password_salt, password_hash = prompt_edge_blocker_password(existing)
     print("Pruefe Hammerspoon...")
-    ensure_hammerspoon()
+    ensure_hammerspoon(password_salt, password_hash)
     print(
         "Hinweis: Hammerspoon benoetigt eventuell Zugriff unter "
         "Systemeinstellungen > Datenschutz & Sicherheit > Bedienungshilfen."
@@ -193,6 +225,8 @@ def configure(existing: KioskConfig | None = None) -> KioskConfig:
         min_idle_seconds=min_idle_seconds,
         startup_script_path=startup_script_path,
         startup_script_delay_seconds=startup_script_delay_seconds,
+        edge_blocker_password_salt=password_salt,
+        edge_blocker_password_hash=password_hash,
     )
     save_config(config)
 

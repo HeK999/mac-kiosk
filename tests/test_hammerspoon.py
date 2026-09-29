@@ -116,16 +116,32 @@ class HammerspoonTests(unittest.TestCase):
 
         self.assertIn("hs.autoLaunch(true)", content)
         self.assertIn("startEdgeBlocker()", content)
+        self.assertIn("edgeBlockerPasswordAccepted()", content)
+        self.assertNotIn("__PASSWORD_SALT__", content)
+        self.assertNotIn("__PASSWORD_HASH__", content)
+
+    def test_packaged_init_lua_embeds_password_credentials(self):
+        content = hammerspoon.packaged_init_lua("test-salt", "test-hash")
+
+        self.assertIn('EDGE_BLOCKER_PASSWORD_SALT = "test-salt"', content)
+        self.assertIn('EDGE_BLOCKER_PASSWORD_HASH = "test-hash"', content)
+        self.assertIn("hs.dialog.textPrompt", content)
+        self.assertIn("hs.hash.SHA256", content)
 
     def test_install_hammerspoon_config_writes_config(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ".hammerspoon" / "init.lua"
-            written = hammerspoon.install_hammerspoon_config(path)
+            written = hammerspoon.install_hammerspoon_config(
+                path,
+                password_salt="test-salt",
+                password_hash="test-hash",
+            )
 
             content = path.read_text(encoding="utf-8")
 
         self.assertEqual(written, path)
         self.assertIn("EDGE_BLOCKER_ENABLED", content)
+        self.assertIn('EDGE_BLOCKER_PASSWORD_SALT = "test-salt"', content)
 
     def test_install_hammerspoon_config_backs_up_existing_config(self):
         with tempfile.TemporaryDirectory() as tmp:

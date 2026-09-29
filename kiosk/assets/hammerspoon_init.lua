@@ -5,8 +5,37 @@ EDGE_BLOCKER_DEADZONE_TOP = 12
 EDGE_BLOCKER_DEADZONE_BOTTOM = 16
 EDGE_BLOCKER_TOGGLE_MODS = {"cmd", "alt", "ctrl"}
 EDGE_BLOCKER_TOGGLE_KEY = "k"
+EDGE_BLOCKER_PASSWORD_SALT = "__PASSWORD_SALT__"
+EDGE_BLOCKER_PASSWORD_HASH = "__PASSWORD_HASH__"
+
+function edgeBlockerPasswordAccepted()
+  local button, password = hs.dialog.textPrompt(
+    "Edge-Blocker deaktivieren",
+    "Passwort eingeben:",
+    "",
+    "Deaktivieren",
+    "Abbrechen",
+    true
+  )
+
+  if button ~= "Deaktivieren" then
+    return false
+  end
+
+  local enteredHash = hs.hash.SHA256(EDGE_BLOCKER_PASSWORD_SALT .. ":" .. password)
+  if enteredHash ~= EDGE_BLOCKER_PASSWORD_HASH then
+    hs.alert.show("Falsches Passwort")
+    return false
+  end
+
+  return true
+end
 
 function edgeBlockerToggle()
+  if EDGE_BLOCKER_ENABLED and not edgeBlockerPasswordAccepted() then
+    return
+  end
+
   EDGE_BLOCKER_ENABLED = not EDGE_BLOCKER_ENABLED
   hs.alert.show("Edge blocker: " .. (EDGE_BLOCKER_ENABLED and "ON" or "OFF"))
 end
@@ -70,4 +99,3 @@ EDGE_BLOCKER_WATCHDOG = hs.timer.doEvery(1, function()
 end)
 
 hs.alert.show("Edge blocker loaded")
-

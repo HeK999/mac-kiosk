@@ -15,6 +15,11 @@ import subprocess
 import tempfile
 import time
 
+from .config import (
+    DEFAULT_EDGE_BLOCKER_PASSWORD_HASH,
+    DEFAULT_EDGE_BLOCKER_PASSWORD_SALT,
+)
+
 HAMMERSPOON_APP_NAME = "Hammerspoon"
 HAMMERSPOON_APP_PATHS = (
     Path("/Applications/Hammerspoon.app"),
@@ -160,11 +165,17 @@ def ensure_hammerspoon_app() -> None:
     install_hammerspoon_from_github_release()
 
 
-def packaged_init_lua() -> str:
-    return (
+def packaged_init_lua(
+    password_salt: str = DEFAULT_EDGE_BLOCKER_PASSWORD_SALT,
+    password_hash: str = DEFAULT_EDGE_BLOCKER_PASSWORD_HASH,
+) -> str:
+    template = (
         resources.files("kiosk.assets")
         .joinpath("hammerspoon_init.lua")
         .read_text(encoding="utf-8")
+    )
+    return template.replace("__PASSWORD_SALT__", password_salt).replace(
+        "__PASSWORD_HASH__", password_hash
     )
 
 
@@ -173,9 +184,13 @@ def backup_path_for(config_path: Path) -> Path:
     return config_path.with_name(f"{config_path.name}.backup-{timestamp}")
 
 
-def install_hammerspoon_config(config_path: Path | None = None) -> Path | None:
+def install_hammerspoon_config(
+    config_path: Path | None = None,
+    password_salt: str = DEFAULT_EDGE_BLOCKER_PASSWORD_SALT,
+    password_hash: str = DEFAULT_EDGE_BLOCKER_PASSWORD_HASH,
+) -> Path | None:
     target = config_path if config_path is not None else HAMMERSPOON_CONFIG_PATH
-    content = packaged_init_lua()
+    content = packaged_init_lua(password_salt, password_hash)
     target.parent.mkdir(parents=True, exist_ok=True)
 
     if target.exists():
@@ -213,9 +228,15 @@ def reload_hammerspoon_config() -> None:
     )
 
 
-def ensure_hammerspoon() -> None:
+def ensure_hammerspoon(
+    password_salt: str = DEFAULT_EDGE_BLOCKER_PASSWORD_SALT,
+    password_hash: str = DEFAULT_EDGE_BLOCKER_PASSWORD_HASH,
+) -> None:
     ensure_hammerspoon_app()
-    install_hammerspoon_config()
+    install_hammerspoon_config(
+        password_salt=password_salt,
+        password_hash=password_hash,
+    )
     start_hammerspoon()
     reload_hammerspoon_config()
 
