@@ -134,6 +134,15 @@ Wenn noch kein Kiosk eingerichtet ist, führt `kiosk` durch die Einrichtung.
 Wenn bereits ein Kiosk eingerichtet ist, zeigt `kiosk` die konfigurierte Website
 und bietet an, die Einstellungen zu ändern oder den Kiosk zu deaktivieren.
 
+Als Website kann auch der vollständige absolute Pfad zu einer lokalen HTML-Datei
+angegeben werden, zum Beispiel `/Users/name/website/index.html`. `kiosk` wandelt
+den Pfad automatisch in eine korrekt kodierte `file://`-URL um. Das funktioniert
+mit Chrome und Firefox und benötigt keinen lokalen Webserver. Relative Pfade und
+die Kurzform `~/...` werden nicht als lokale Dateien erkannt. Für Seiten, die
+HTTP, serverseitige Logik oder durch Browser-Sicherheitsregeln eingeschränkte
+JavaScript-Anfragen benötigen, sollte weiterhin ein lokaler Webserver verwendet
+werden.
+
 Für das optionale Startskript muss ein **vollständiger, absoluter Dateipfad**
 angegeben werden, z. B. `/Users/simon/scripts/start.sh` oder
 `/Users/simon/scripts/start.py`. Relative Pfade und `~` werden nicht akzeptiert.

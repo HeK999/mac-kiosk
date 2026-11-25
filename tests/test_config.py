@@ -26,6 +26,18 @@ class ConfigTests(unittest.TestCase):
     def test_normalize_url_adds_https(self):
         self.assertEqual(normalize_url("example.com"), "https://example.com")
 
+    def test_normalize_url_converts_absolute_local_path_to_file_url(self):
+        self.assertEqual(
+            normalize_url("/Users/name/My Website/index.html"),
+            "file:///Users/name/My%20Website/index.html",
+        )
+
+    def test_normalize_url_keeps_file_url(self):
+        self.assertEqual(
+            normalize_url("file:///Users/name/index.html"),
+            "file:///Users/name/index.html",
+        )
+
     def test_normalize_url_rejects_empty_value(self):
         with self.assertRaises(ValueError):
             normalize_url(" ")

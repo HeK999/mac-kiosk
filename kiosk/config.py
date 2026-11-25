@@ -67,8 +67,10 @@ def normalize_url(value: str) -> str:
     url = value.strip()
     if not url:
         raise ValueError("Website darf nicht leer sein.")
-    if url.startswith(("http://", "https://")):
+    if url.startswith(("http://", "https://", "file://")):
         return url
+    if Path(url).is_absolute():
+        return Path(url).as_uri()
     return f"https://{url}"
 
 
