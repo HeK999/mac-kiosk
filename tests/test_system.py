@@ -48,6 +48,78 @@ class SystemTests(unittest.TestCase):
 
         self.assertEqual(system.get_idle_seconds(), 90)
 
+    @patch("kiosk.system.subprocess.run")
+    def test_get_idle_seconds_preserves_subsecond_input_timing(self, run):
+        run.return_value.returncode = 0
+        run.return_value.stdout = '    "HIDIdleTime" = 9500000000\n'
+
+        self.assertEqual(system.get_idle_seconds(), 9.5)
+
+    @patch("kiosk.system.time.sleep")
+    @patch("kiosk.system.time.monotonic", side_effect=[110, 120, 140, 150, 155, 157])
+    @patch("kiosk.system.get_idle_seconds", side_effect=[20, None, 50, 2, 7, 9])
+    def test_idle_wait_requires_input_since_last_refresh_and_then_inactivity(
+        self, idle, monotonic, sleep,
+    ):
+        system.wait_for_idle_threshold(9, since=100)
+
+        self.assertEqual(idle.call_count, 6)
+        self.assertEqual(sleep.call_args_list, [call(5), call(5), call(5), call(5), call(2)])
+
+    def test_auto_refresh_waits_for_new_input_after_start_and_each_success(self):
+        for browser in ("chrome", "firefox"):
+            with self.subTest(browser=browser):
+                clock = [100.0]
+                last_input = [50.0]
+                input_times = iter([145.0, 210.0])
+                next_input = [next(input_times)]
+                reloads = []
+
+                def sleep(seconds):
+                    clock[0] += seconds
+                    if clock[0] > 300:
+                        raise StopIteration
+                    if next_input[0] is not None and clock[0] >= next_input[0]:
+                        last_input[0] = next_input[0]
+                        next_input[0] = next(input_times, None)
+
+                def reload_browser(selected_browser, url):
+                    reloads.append((clock[0], selected_browser, url))
+                    return True
+
+                config = KioskConfig("https://example.com", browser=browser,
+                                     refresh_interval_seconds=30, min_idle_seconds=9)
+                with patch("kiosk.system.stop_all_browsers"), \
+                        patch("kiosk.system.start_browser_kiosk_with_retries"), \
+                        patch("kiosk.system.time.monotonic", side_effect=lambda: clock[0]), \
+                        patch("kiosk.system.time.sleep", side_effect=sleep), \
+                        patch("kiosk.system.get_idle_seconds",
+                              side_effect=lambda: clock[0] - last_input[0]), \
+                        patch("kiosk.system.reload_browser", side_effect=reload_browser), \
+                        self.assertRaises(StopIteration):
+                    system.run_kiosk(config)
+
+                self.assertEqual(reloads, [
+                    (154.0, browser, config.url), (219.0, browser, config.url),
+                ])
+
+    @patch("kiosk.system.time.monotonic", side_effect=[100, 150, 170])
+    @patch("kiosk.system.time.sleep")
+    @patch("kiosk.system.wait_for_idle_threshold")
+    @patch("kiosk.system.wait_until_due", side_effect=[None, StopIteration])
+    @patch("kiosk.system.reload_browser", side_effect=[False, True])
+    @patch("kiosk.system.start_browser_kiosk_with_retries")
+    @patch("kiosk.system.stop_all_browsers")
+    def test_failed_refresh_rechecks_idle_and_keeps_previous_input_baseline(
+        self, stop, start, reload_browser, wait, idle, sleep, monotonic,
+    ):
+        with self.assertRaises(StopIteration):
+            system.run_kiosk(KioskConfig("https://example.com", min_idle_seconds=9))
+
+        self.assertEqual(idle.call_args_list, [call(9, since=100), call(9, since=100)])
+        self.assertEqual(reload_browser.call_count, 2)
+        sleep.assert_called_once_with(5)
+
     @patch("kiosk.system.homebrew_executable", side_effect=[None, "/opt/homebrew/bin/brew"])
     @patch("kiosk.system.install_homebrew")
     @patch("kiosk.system.subprocess.run")

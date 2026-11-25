@@ -266,7 +266,7 @@ def reload_browser(browser: str, url: str) -> bool:
     raise ValueError(f"Unbekannter Browser: {browser}")
 
 
-def get_idle_seconds() -> int | None:
+def get_idle_seconds() -> float | None:
     result = subprocess.run(
         ["ioreg", "-c", "IOHIDSystem"],
         check=False,
@@ -281,7 +281,7 @@ def get_idle_seconds() -> int | None:
     if not match:
         return None
 
-    return int(match.group(1)) // 1_000_000_000
+    return int(match.group(1)) / 1_000_000_000
 
 
 def wait_until_due(seconds: int) -> None:
@@ -292,10 +292,15 @@ def wait_until_due(seconds: int) -> None:
         remaining -= sleep_for
 
 
-def wait_for_idle_threshold(min_idle_seconds: int) -> None:
+def wait_for_idle_threshold(min_idle_seconds: int, since: float | None = None) -> None:
     while True:
+        # Sample the clock before ioreg so its runtime cannot look like input.
+        observed_at = time.monotonic()
         idle_seconds = get_idle_seconds()
         if idle_seconds is None:
+            time.sleep(5)
+            continue
+        if since is not None and idle_seconds >= observed_at - since:
             time.sleep(5)
             continue
         if idle_seconds >= min_idle_seconds:
@@ -317,6 +322,7 @@ def run_kiosk(config: KioskConfig) -> None:
             raise RuntimeError(f"Startskript fehlgeschlagen (Exit-Code {returncode}): {path}")
 
     stop_all_browsers()
+    last_refresh_at = time.monotonic()
     start_browser_kiosk_with_retries(config.browser, config.url)
 
     if not config.auto_refresh_enabled:
@@ -325,6 +331,10 @@ def run_kiosk(config: KioskConfig) -> None:
 
     while True:
         wait_until_due(config.refresh_interval_seconds)
-        wait_for_idle_threshold(config.min_idle_seconds)
-        while not reload_browser(config.browser, config.url):
+        while True:
+            wait_for_idle_threshold(config.min_idle_seconds, since=last_refresh_at)
+            refresh_started_at = time.monotonic()
+            if reload_browser(config.browser, config.url):
+                last_refresh_at = refresh_started_at
+                break
             time.sleep(5)

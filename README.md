@@ -20,6 +20,7 @@ https://github.com/HeK999/mac-kiosk.git
 - richtet einen macOS LaunchAgent ein, damit der Kiosk beim Login automatisch startet
 - kehrt beim automatischen Reload zur konfigurierten Startseite zurück
 - wartet vor dem Reload auf eine einstellbare Inaktivitätszeit
+- lädt nur nach einer neuen Maus- oder Tastaturinteraktion seit dem letzten Laden neu
 - installiert und konfiguriert Hammerspoon für den Edge-Blocker
 - deaktiviert beim Abschalten auch den Kiosk-Autostart und Hammerspoon-Autostart
 
@@ -172,6 +173,12 @@ Chrome im aktiven Tab zur konfigurierten Startseite zurück. Ist diese bereits
 geöffnet, wird sie neu geladen. Das gilt auch für lokale HTML-Dateien. Firefox
 wird vollständig beendet und mit der konfigurierten Startseite erneut im
 Kioskmodus gestartet.
+
+Ohne neue Maus- oder Tastatureingaben seit dem Start bzw. dem letzten erfolgreichen
+Reload bleibt die Startseite geöffnet und wird nicht wiederholt neu geladen.
+Nach einer Interaktion gelten weiterhin das Reload-Intervall und die eingestellte
+Mindest-Inaktivitätszeit. Schlägt ein Reload fehl, wird vor jedem weiteren Versuch
+erneut auf die Mindest-Inaktivität gewartet.
 
 ## Befehle
 

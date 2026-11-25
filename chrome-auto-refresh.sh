@@ -7,6 +7,9 @@ REFRESH_INTERVAL_SECONDS="${REFRESH_INTERVAL_SECONDS:-30}"
 MIN_IDLE_SECONDS="${MIN_IDLE_SECONDS:-9}"
 POLL_SECONDS="${POLL_SECONDS:-5}"
 KIOSK_URL="${KIOSK_URL:-https://example.com/}"
+# Bash's timer and idle readings have one-second resolution. Use the upper
+# bound so rounding cannot count input from before the last load as new input.
+LAST_REFRESH_SECONDS=$((SECONDS + 1))
 
 log() {
   printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -62,10 +65,17 @@ wait_for_idle_threshold() {
   local idle_seconds
   local seconds_until_idle
   local sleep_for
+  local observed_at
 
   while true; do
+    observed_at="${SECONDS}"
     if ! idle_seconds="$(get_idle_seconds)"; then
       log "Could not read macOS idle time; retrying in ${POLL_SECONDS}s."
+      sleep "${POLL_SECONDS}"
+      continue
+    fi
+
+    if ((idle_seconds >= observed_at - LAST_REFRESH_SECONDS)); then
       sleep "${POLL_SECONDS}"
       continue
     fi
@@ -93,7 +103,9 @@ while true; do
   while true; do
     wait_for_idle_threshold
 
+    refresh_started_at=$((SECONDS + 1))
     if reload_chrome_tab; then
+      LAST_REFRESH_SECONDS="${refresh_started_at}"
       log "Loaded configured Chrome start page: ${KIOSK_URL}"
       break
     fi
