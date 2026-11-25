@@ -18,6 +18,8 @@ from .config import (
     DEFAULT_EDGE_BLOCKER_PASSWORD_SALT,
     DEFAULT_REFRESH_INTERVAL_SECONDS,
     DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS,
+    DEFAULT_BROWSER,
+    SUPPORTED_BROWSERS,
     KioskConfig,
     create_edge_blocker_password,
     config_path,
@@ -37,7 +39,7 @@ from .hammerspoon import (
     ensure_hammerspoon,
     get_hammerspoon_status,
 )
-from .system import ensure_chrome, run_kiosk
+from .system import BROWSER_DISPLAY_NAMES, ensure_browser, run_kiosk
 from .startup import prepare_startup_script
 
 
@@ -57,6 +59,7 @@ def print_status() -> KioskConfig | None:
     refresh = "aktiv" if config.auto_refresh_enabled else "deaktiviert"
     print("Kiosk ist eingerichtet.")
     print(f"Website: {config.url}")
+    print(f"Browser: {BROWSER_DISPLAY_NAMES[config.browser]}")
     print(f"Startskript: {config.startup_script_path or 'keines'}")
     if config.startup_script_path:
         print(f"Wartezeit vor Kiosk-Start: {config.startup_script_delay_seconds}s")
@@ -120,6 +123,17 @@ def prompt_url(existing: str | None = None) -> str:
             print(exc)
 
 
+def prompt_browser(existing: str = DEFAULT_BROWSER) -> str:
+    while True:
+        answer = input(
+            f"Welcher Browser soll verwendet werden? (chrome/firefox) [{existing}]: "
+        ).strip().lower()
+        browser = answer or existing
+        if browser in SUPPORTED_BROWSERS:
+            return browser
+        print("Bitte chrome oder firefox eingeben.")
+
+
 def kiosk_command() -> KioskCommand:
     executable = shutil.which("kiosk")
     if executable:
@@ -178,8 +192,9 @@ def prompt_edge_blocker_password(
 
 
 def configure(existing: KioskConfig | None = None) -> KioskConfig:
-    print("Pruefe Google Chrome...")
-    ensure_chrome()
+    browser = prompt_browser(existing.browser if existing else DEFAULT_BROWSER)
+    print(f"Pruefe {BROWSER_DISPLAY_NAMES[browser]}...")
+    ensure_browser(browser)
     password_salt, password_hash = prompt_edge_blocker_password(existing)
 
     url = prompt_url(existing.url if existing else None)
@@ -214,6 +229,7 @@ def configure(existing: KioskConfig | None = None) -> KioskConfig:
 
     config = KioskConfig(
         url=url,
+        browser=browser,
         auto_refresh_enabled=auto_refresh_enabled,
         refresh_interval_seconds=refresh_interval_seconds,
         min_idle_seconds=min_idle_seconds,
@@ -237,6 +253,7 @@ def configure(existing: KioskConfig | None = None) -> KioskConfig:
 
     print("Kiosk wurde eingerichtet.")
     print(f"Website: {config.url}")
+    print(f"Browser: {BROWSER_DISPLAY_NAMES[config.browser]}")
     print(f"Autostart: {plist_path}")
     return config
 

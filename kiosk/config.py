@@ -16,6 +16,8 @@ APP_NAME = "kiosk"
 DEFAULT_REFRESH_INTERVAL_SECONDS = 1800
 DEFAULT_MIN_IDLE_SECONDS = 90
 DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS = 10
+DEFAULT_BROWSER = "chrome"
+SUPPORTED_BROWSERS = ("chrome", "firefox")
 DEFAULT_EDGE_BLOCKER_PASSWORD_SALT = "kiosk-edge-blocker-default-v1"
 DEFAULT_EDGE_BLOCKER_PASSWORD_HASH = (
     "a01a9783b8583ed821952e3d9d0207d5173545e7a0910c7b3ac23cf41b2f1474"
@@ -42,6 +44,14 @@ class KioskConfig:
     startup_script_delay_seconds: int = DEFAULT_STARTUP_SCRIPT_DELAY_SECONDS
     edge_blocker_password_salt: str = DEFAULT_EDGE_BLOCKER_PASSWORD_SALT
     edge_blocker_password_hash: str = DEFAULT_EDGE_BLOCKER_PASSWORD_HASH
+    browser: str = DEFAULT_BROWSER
+
+    def __post_init__(self) -> None:
+        if self.browser not in SUPPORTED_BROWSERS:
+            supported = ", ".join(SUPPORTED_BROWSERS)
+            raise ValueError(
+                f"Unbekannter Browser: {self.browser}. Erlaubt sind: {supported}."
+            )
 
 
 def app_support_dir(home: Path | None = None) -> Path:
@@ -72,6 +82,7 @@ def load_config(path: Path | None = None) -> KioskConfig | None:
 
     return KioskConfig(
         url=normalize_url(str(data["url"])),
+        browser=str(data.get("browser", DEFAULT_BROWSER)),
         auto_refresh_enabled=bool(data.get("auto_refresh_enabled", True)),
         refresh_interval_seconds=int(
             data.get("refresh_interval_seconds", DEFAULT_REFRESH_INTERVAL_SECONDS)

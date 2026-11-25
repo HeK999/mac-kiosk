@@ -1,4 +1,4 @@
-"""macOS system integration for Chrome kiosk mode.
+"""macOS system integration for browser kiosk mode.
 
 Creator: Simon Krieger
 """
@@ -17,16 +17,48 @@ from .startup import prepare_startup_script
 
 
 CHROME_APP_NAME = "Google Chrome"
-START_CHROME_ATTEMPTS = 24
-START_CHROME_RETRY_SECONDS = 5
+FIREFOX_APP_NAME = "Firefox"
+START_BROWSER_ATTEMPTS = 24
+START_BROWSER_RETRY_SECONDS = 5
+# Backwards-compatible names for callers that imported the old constants.
+START_CHROME_ATTEMPTS = START_BROWSER_ATTEMPTS
+START_CHROME_RETRY_SECONDS = START_BROWSER_RETRY_SECONDS
 CHROME_APP_PATHS = (
     Path("/Applications/Google Chrome.app"),
     Path.home() / "Applications" / "Google Chrome.app",
 )
+FIREFOX_APP_PATHS = (
+    Path("/Applications/Firefox.app"),
+    Path.home() / "Applications" / "Firefox.app",
+)
+BROWSER_PROCESS_NAMES = {
+    "chrome": "Google Chrome",
+    "firefox": "firefox",
+}
+BROWSER_CASKS = {
+    "chrome": "google-chrome",
+    "firefox": "firefox",
+}
+BROWSER_DISPLAY_NAMES = {
+    "chrome": "Google Chrome",
+    "firefox": "Firefox",
+}
 
 
 def chrome_installed() -> bool:
     return any(path.exists() for path in CHROME_APP_PATHS)
+
+
+def firefox_installed() -> bool:
+    return any(path.exists() for path in FIREFOX_APP_PATHS)
+
+
+def browser_installed(browser: str) -> bool:
+    if browser == "chrome":
+        return chrome_installed()
+    if browser == "firefox":
+        return firefox_installed()
+    raise ValueError(f"Unbekannter Browser: {browser}")
 
 
 def homebrew_executable() -> str | None:
@@ -52,7 +84,11 @@ def install_homebrew() -> None:
     )
 
 
-def install_chrome_with_homebrew() -> None:
+def install_browser_with_homebrew(browser: str) -> None:
+    cask = BROWSER_CASKS.get(browser)
+    if cask is None:
+        raise ValueError(f"Unbekannter Browser: {browser}")
+
     brew = homebrew_executable()
     if brew is None:
         install_homebrew()
@@ -61,18 +97,43 @@ def install_chrome_with_homebrew() -> None:
     if brew is None:
         raise RuntimeError("Homebrew wurde installiert, aber `brew` wurde nicht gefunden.")
 
-    subprocess.run([brew, "install", "--cask", "google-chrome"], check=True)
+    subprocess.run([brew, "install", "--cask", cask], check=True)
+
+
+def install_chrome_with_homebrew() -> None:
+    install_browser_with_homebrew("chrome")
+
+
+def install_firefox_with_homebrew() -> None:
+    install_browser_with_homebrew("firefox")
 
 
 def ensure_chrome() -> None:
-    if chrome_installed():
-        return
-    install_chrome_with_homebrew()
+    if not chrome_installed():
+        install_chrome_with_homebrew()
 
 
-def stop_chrome() -> None:
+def ensure_firefox() -> None:
+    if not firefox_installed():
+        install_firefox_with_homebrew()
+
+
+def ensure_browser(browser: str) -> None:
+    if browser == "chrome":
+        ensure_chrome()
+    elif browser == "firefox":
+        ensure_firefox()
+    else:
+        raise ValueError(f"Unbekannter Browser: {browser}")
+
+
+def stop_browser(browser: str) -> None:
+    process_name = BROWSER_PROCESS_NAMES.get(browser)
+    if process_name is None:
+        raise ValueError(f"Unbekannter Browser: {browser}")
+
     subprocess.run(
-        ["killall", CHROME_APP_NAME],
+        ["killall", process_name],
         check=False,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -80,7 +141,7 @@ def stop_chrome() -> None:
 
     for _ in range(20):
         result = subprocess.run(
-            ["pgrep", "-x", CHROME_APP_NAME],
+            ["pgrep", "-x", process_name],
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -88,6 +149,27 @@ def stop_chrome() -> None:
         if result.returncode != 0:
             return
         time.sleep(0.5)
+
+    raise RuntimeError(f"{BROWSER_DISPLAY_NAMES[browser]} konnte nicht beendet werden.")
+
+
+def stop_chrome() -> None:
+    stop_browser("chrome")
+
+
+def stop_firefox() -> None:
+    stop_browser("firefox")
+
+
+def stop_all_browsers() -> None:
+    errors: list[RuntimeError] = []
+    for browser in ("chrome", "firefox"):
+        try:
+            stop_browser(browser)
+        except RuntimeError as exc:
+            errors.append(exc)
+    if errors:
+        raise errors[0]
 
 
 def start_chrome_kiosk(url: str) -> None:
@@ -104,20 +186,51 @@ def start_chrome_kiosk(url: str) -> None:
     )
 
 
-def start_chrome_kiosk_with_retries(url: str) -> None:
-    for attempt in range(1, START_CHROME_ATTEMPTS + 1):
+def start_firefox_kiosk(url: str) -> None:
+    subprocess.run(
+        ["open", "-na", FIREFOX_APP_NAME, "--args", "--kiosk", url],
+        check=True,
+    )
+    time.sleep(2)
+    subprocess.run(
+        ["osascript", "-e", 'tell application "Firefox" to activate'],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def start_browser_kiosk(browser: str, url: str) -> None:
+    if browser == "chrome":
+        start_chrome_kiosk(url)
+    elif browser == "firefox":
+        start_firefox_kiosk(url)
+    else:
+        raise ValueError(f"Unbekannter Browser: {browser}")
+
+
+def start_browser_kiosk_with_retries(browser: str, url: str) -> None:
+    display_name = BROWSER_DISPLAY_NAMES.get(browser)
+    if display_name is None:
+        raise ValueError(f"Unbekannter Browser: {browser}")
+
+    for attempt in range(1, START_BROWSER_ATTEMPTS + 1):
         try:
-            start_chrome_kiosk(url)
+            start_browser_kiosk(browser, url)
             return
         except subprocess.CalledProcessError as exc:
             print(
-                f"Chrome konnte nicht gestartet werden "
-                f"(Versuch {attempt}/{START_CHROME_ATTEMPTS}): {exc}",
+                f"{display_name} konnte nicht gestartet werden "
+                f"(Versuch {attempt}/{START_BROWSER_ATTEMPTS}): {exc}",
                 flush=True,
             )
-            if attempt == START_CHROME_ATTEMPTS:
+            if attempt == START_BROWSER_ATTEMPTS:
                 raise
-            time.sleep(START_CHROME_RETRY_SECONDS)
+            time.sleep(START_BROWSER_RETRY_SECONDS)
+
+
+def start_chrome_kiosk_with_retries(url: str) -> None:
+    start_browser_kiosk_with_retries("chrome", url)
 
 
 def reload_chrome_tab() -> bool:
@@ -130,6 +243,16 @@ def reload_chrome_tab() -> bool:
         check=False,
     )
     return result.returncode == 0
+
+
+def reload_browser(browser: str, url: str) -> bool:
+    if browser == "chrome":
+        return reload_chrome_tab()
+    if browser == "firefox":
+        stop_browser("firefox")
+        start_browser_kiosk_with_retries("firefox", url)
+        return True
+    raise ValueError(f"Unbekannter Browser: {browser}")
 
 
 def get_idle_seconds() -> int | None:
@@ -182,8 +305,8 @@ def run_kiosk(config: KioskConfig) -> None:
         if returncode is not None and returncode != 0:
             raise RuntimeError(f"Startskript fehlgeschlagen (Exit-Code {returncode}): {path}")
 
-    stop_chrome()
-    start_chrome_kiosk_with_retries(config.url)
+    stop_all_browsers()
+    start_browser_kiosk_with_retries(config.browser, config.url)
 
     if not config.auto_refresh_enabled:
         while True:
@@ -192,5 +315,5 @@ def run_kiosk(config: KioskConfig) -> None:
     while True:
         wait_until_due(config.refresh_interval_seconds)
         wait_for_idle_threshold(config.min_idle_seconds)
-        while not reload_chrome_tab():
+        while not reload_browser(config.browser, config.url):
             time.sleep(5)

@@ -9,6 +9,7 @@ from kiosk.cli import (
     configure,
     kiosk_command,
     main,
+    prompt_browser,
     prompt_edge_blocker_password,
     prompt_startup_script,
 )
@@ -70,6 +71,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         self.assertIn("Website: https://example.com", stdout.getvalue())
+        self.assertIn("Browser: Google Chrome", stdout.getvalue())
         self.assertIn("Hammerspoon: installiert", stdout.getvalue())
         self.assertIn("Hammerspoon-Config-Backups: 1", stdout.getvalue())
 
@@ -95,10 +97,12 @@ class CliTests(unittest.TestCase):
         return_value=("password-salt", "password-hash"),
     )
     @patch("kiosk.cli.ensure_hammerspoon")
-    @patch("kiosk.cli.ensure_chrome")
+    @patch("kiosk.cli.ensure_browser")
+    @patch("kiosk.cli.prompt_browser", return_value="chrome")
     def test_configure_runs_chrome_and_hammerspoon_setup(
         self,
-        ensure_chrome,
+        prompt_browser_mock,
+        ensure_browser,
         ensure_hammerspoon,
         prompt_edge_blocker_password,
         prompt_url,
@@ -116,8 +120,47 @@ class CliTests(unittest.TestCase):
         self.assertEqual(config.url, "https://example.com")
         self.assertEqual(config.edge_blocker_password_salt, "password-salt")
         self.assertEqual(config.edge_blocker_password_hash, "password-hash")
-        ensure_chrome.assert_called_once()
+        ensure_browser.assert_called_once_with("chrome")
         ensure_hammerspoon.assert_called_once_with("password-salt", "password-hash")
+
+    @patch("kiosk.cli.load_launch_agent")
+    @patch("kiosk.cli.write_launch_agent", return_value=Path("/tmp/agent.plist"))
+    @patch("kiosk.cli.save_config")
+    @patch("kiosk.cli.prompt_int", side_effect=[1800, 90])
+    @patch("kiosk.cli.prompt_bool", return_value=True)
+    @patch("kiosk.cli.prompt_url", return_value="https://example.com")
+    @patch("kiosk.cli.prompt_edge_blocker_password", return_value=("salt", "hash"))
+    @patch("kiosk.cli.ensure_hammerspoon")
+    @patch("kiosk.cli.ensure_browser")
+    @patch("kiosk.cli.prompt_browser", return_value="firefox")
+    def test_configure_installs_only_selected_firefox(
+        self,
+        prompt_browser_mock,
+        ensure_browser,
+        ensure_hammerspoon,
+        prompt_password,
+        prompt_url_mock,
+        prompt_bool_mock,
+        prompt_int_mock,
+        save_config_mock,
+        write_agent,
+        load_agent,
+    ):
+        with patch("sys.stdout", new=io.StringIO()), patch("builtins.input", return_value=""):
+            config = configure(KioskConfig("https://old.example", browser="firefox"))
+
+        self.assertEqual(config.browser, "firefox")
+        prompt_browser_mock.assert_called_once_with("firefox")
+        ensure_browser.assert_called_once_with("firefox")
+
+    def test_prompt_browser_defaults_to_existing_and_rejects_unknown_value(self):
+        with patch("builtins.input", side_effect=["safari", ""]) as prompt, \
+                patch("sys.stdout", new=io.StringIO()) as stdout:
+            result = prompt_browser("firefox")
+
+        self.assertEqual(result, "firefox")
+        self.assertEqual(prompt.call_count, 2)
+        self.assertIn("chrome oder firefox", stdout.getvalue())
 
     @patch("kiosk.cli.getpass.getpass", return_value="")
     def test_password_prompt_uses_951951_by_default(self, getpass):
@@ -162,9 +205,15 @@ class CliTests(unittest.TestCase):
             ]
             for existing, answers, expected_path, expected_delay in cases:
                 with self.subTest(answers=answers), ExitStack() as stack:
-                    for name in ("ensure_chrome", "ensure_hammerspoon", "save_config",
+                    for name in ("ensure_browser", "ensure_hammerspoon", "save_config",
                                  "write_launch_agent", "load_launch_agent", "kiosk_command"):
                         stack.enter_context(patch(f"kiosk.cli.{name}"))
+                    stack.enter_context(
+                        patch(
+                            "kiosk.cli.prompt_browser",
+                            return_value=existing.browser if existing else "chrome",
+                        )
+                    )
                     stack.enter_context(
                         patch(
                             "kiosk.cli.prompt_edge_blocker_password",

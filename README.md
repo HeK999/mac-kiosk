@@ -2,7 +2,8 @@
 
 Creator: Simon Krieger
 
-`kiosk` richtet auf einem Mac einen Chrome-Kiosk ein. Das Tool wird über den
+`kiosk` richtet auf einem Mac einen Browser-Kiosk mit Google Chrome oder Firefox
+ein. Das Tool wird über den
 Terminal-Befehl `kiosk` bedient und kann per `pipx` direkt aus dem Git-Repository
 installiert werden.
 
@@ -14,7 +15,7 @@ https://github.com/HeK999/mac-kiosk.git
 
 ## Was der Kiosk macht
 
-- startet Google Chrome im Kiosk-/App-Modus mit einer konfigurierten Website
+- startet den ausgewählten Browser im Kioskmodus mit einer konfigurierten Website
 - kann vor dem Laden der Website einmal pro Kiosk-Start ein `.sh`- oder `.py`-Skript starten
 - richtet einen macOS LaunchAgent ein, damit der Kiosk beim Login automatisch startet
 - kann die Website automatisch neu laden
@@ -44,8 +45,10 @@ Den tatsächlich verwendeten Dateinamen zeigt `kiosk status` an.
 - Git
 - Netzwerkzugriff auf GitHub
 
-Google Chrome wird beim Setup geprüft. Wenn Chrome fehlt, versucht `kiosk`,
-Chrome über Homebrew zu installieren.
+Beim Setup kann Google Chrome oder Firefox ausgewählt werden. Nur der ausgewählte
+Browser wird geprüft. Wenn er fehlt, versucht `kiosk`, ihn über Homebrew zu
+installieren. Chrome ist die Voreinstellung und wird auch für Konfigurationen
+verwendet, die mit einer älteren Version von `kiosk` erstellt wurden.
 
 Hammerspoon wird ebenfalls geprüft. `kiosk` lädt automatisch ein zur
 installierten macOS-Version passendes offizielles Hammerspoon-Release von
@@ -115,15 +118,17 @@ kiosk
 Beim ersten Start prüft das Tool:
 
 1. ob bereits ein Kiosk eingerichtet ist
-2. ob Google Chrome installiert ist
-3. ob Hammerspoon installiert und konfiguriert ist
-4. welche Website angezeigt werden soll
-5. ob ein Startskript verwendet werden soll (Standard: leer)
-6. nur bei angegebenem Skript: wie viele Sekunden vor dem Kiosk-Start gewartet
+2. ob Chrome oder Firefox verwendet werden soll (Standard: Chrome)
+3. ob der ausgewählte Browser installiert ist
+4. welches Passwort den Edge-Blocker deaktivieren darf (Standard: `951951`)
+5. ob Hammerspoon installiert und konfiguriert ist
+6. welche Website angezeigt werden soll
+7. ob ein Startskript verwendet werden soll (Standard: leer)
+8. nur bei angegebenem Skript: wie viele Sekunden vor dem Kiosk-Start gewartet
    werden soll (Standard: 10, mindestens 0)
-7. ob Auto-Reload aktiv sein soll
-8. nach wie vielen Sekunden neu geladen werden soll
-9. wie lange seit der letzten Interaktion gewartet werden soll
+9. ob Auto-Reload aktiv sein soll
+10. nach wie vielen Sekunden neu geladen werden soll
+11. wie lange seit der letzten Interaktion gewartet werden soll
 
 Wenn noch kein Kiosk eingerichtet ist, führt `kiosk` durch die Einrichtung.
 Wenn bereits ein Kiosk eingerichtet ist, zeigt `kiosk` die konfigurierte Website
@@ -142,13 +147,20 @@ Beim Ändern der Einstellungen behält Enter den vorhandenen Skriptpfad bei;
 `-` entfernt ihn. Die Wartezeit wird nur abgefragt, wenn ein Skript gesetzt ist.
 
 Das Skript wird beim Login bzw. bei `kiosk run` einmal gestartet, nicht bei
-automatischen Reloads oder Chrome-Startwiederholungen. `.sh` läuft mit `/bin/bash`,
+automatischen Reloads oder Browser-Startwiederholungen. `.sh` läuft mit `/bin/bash`,
 `.py` mit dem Python-Interpreter von `kiosk` (bei pipx dessen Umgebung).
 Das Arbeitsverzeichnis ist der Ordner des Skripts. Die Wartezeit beginnt nach
-dem Start des Skripts; danach wird Chrome geöffnet, auch wenn das Skript noch
+dem Start des Skripts; danach wird der Browser geöffnet, auch wenn das Skript noch
 läuft, etwa als lokaler Webserver. Endet es während der Wartezeit mit einem
 Fehler, wird der Kiosk-Start abgebrochen. Beim Autostart erscheinen Ausgaben
 und Fehler unter `~/Library/Application Support/kiosk/logs/`.
+
+Vor jedem Kioskstart werden laufende Chrome- und Firefox-Instanzen beendet. Das
+ist für Firefox erforderlich, damit die Kioskparameter nicht an eine bereits
+laufende Instanz übergeben und ignoriert werden. Firefox wird ohne privaten Modus
+gestartet; Cookies und Profildaten bleiben daher erhalten. Beim Auto-Reload lädt
+Chrome den aktiven Tab neu, während Firefox vollständig beendet und mit der
+konfigurierten Website erneut im Kioskmodus gestartet wird.
 
 ## Befehle
 
@@ -202,7 +214,7 @@ sondern nur ein gesalzener SHA-256-Hash. Das erneute Aktivieren und der Befehl
 `kiosk disable` benötigen kein Passwort.
 
 Solange der Edge-Blocker aktiv ist, sind nur Buchstaben, Zahlen, Satzzeichen,
-Leertaste, Enter, Shift, Alt und die Pfeiltasten freigegeben. Unter anderem
+Leertaste, Enter, Backspace, Shift, Alt und die Pfeiltasten freigegeben. Unter anderem
 werden Command, Control, Tab, Escape, Funktions- und Sondertasten blockiert,
 sodass Systemkombinationen wie `Cmd+Tab` nicht ausgeführt werden. Die
 Passworteingabe wird von Hammerspoon selbst maskiert und erlaubt Backspace,

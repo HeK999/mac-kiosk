@@ -139,6 +139,14 @@ class HammerspoonTests(unittest.TestCase):
         self.assertIn("return flags.cmd or flags.ctrl or flags.fn", content)
         self.assertIn("startKeyboardBlocker()", content)
 
+    def test_packaged_init_lua_allows_backspace_in_kiosk(self):
+        content = hammerspoon.packaged_init_lua()
+
+        allowed_key_codes = content.split("for _, keyCode in ipairs({", 1)[1].split(
+            "}) do", 1
+        )[0]
+        self.assertRegex(allowed_key_codes, r"(?:^|[,\s])51(?:[,\s]|$)")
+
     def test_install_hammerspoon_config_writes_config(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ".hammerspoon" / "init.lua"

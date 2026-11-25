@@ -38,6 +38,7 @@ class ConfigTests(unittest.TestCase):
             config = load_config(path)
 
         self.assertEqual(config.url, "https://example.com")
+        self.assertEqual(config.browser, "chrome")
         self.assertTrue(config.auto_refresh_enabled)
         self.assertEqual(config.refresh_interval_seconds, DEFAULT_REFRESH_INTERVAL_SECONDS)
         self.assertEqual(config.min_idle_seconds, DEFAULT_MIN_IDLE_SECONDS)
@@ -69,6 +70,7 @@ class ConfigTests(unittest.TestCase):
             path = Path(tmp) / "config.json"
             original = KioskConfig(
                 url="https://example.com",
+                browser="firefox",
                 auto_refresh_enabled=False,
                 refresh_interval_seconds=42,
                 min_idle_seconds=9,
@@ -81,6 +83,21 @@ class ConfigTests(unittest.TestCase):
             loaded = load_config(path)
 
         self.assertEqual(loaded, original)
+
+    def test_load_config_rejects_unknown_browser(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.json"
+            path.write_text(
+                json.dumps({"url": "example.com", "browser": "safari"}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "Unbekannter Browser"):
+                load_config(path)
+
+    def test_config_rejects_unknown_browser(self):
+        with self.assertRaisesRegex(ValueError, "Unbekannter Browser"):
+            KioskConfig("https://example.com", browser="safari")
 
 
 if __name__ == "__main__":
