@@ -75,4 +75,5 @@ osascript -e 'tell application "Google Chrome" to activate' || true
 
 close_other_terminal_windows
 
+export KIOSK_URL
 exec "${REFRESH_SCRIPT}"

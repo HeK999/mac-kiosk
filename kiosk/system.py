@@ -233,12 +233,23 @@ def start_chrome_kiosk_with_retries(url: str) -> None:
     start_browser_kiosk_with_retries("chrome", url)
 
 
-def reload_chrome_tab() -> bool:
+def reload_chrome_tab(url: str) -> bool:
     result = subprocess.run(
         [
             "osascript",
             "-e",
-            'tell application "Google Chrome" to reload active tab of front window',
+            '''on run argv
+    tell application "Google Chrome"
+        set kioskTab to active tab of front window
+        set startURL to item 1 of argv
+        if URL of kioskTab is startURL then
+            reload kioskTab
+        else
+            set URL of kioskTab to startURL
+        end if
+    end tell
+end run''',
+            url,
         ],
         check=False,
     )
@@ -247,7 +258,7 @@ def reload_chrome_tab() -> bool:
 
 def reload_browser(browser: str, url: str) -> bool:
     if browser == "chrome":
-        return reload_chrome_tab()
+        return reload_chrome_tab(url)
     if browser == "firefox":
         stop_browser("firefox")
         start_browser_kiosk_with_retries("firefox", url)

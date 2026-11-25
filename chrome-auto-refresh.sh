@@ -6,6 +6,7 @@ set -u
 REFRESH_INTERVAL_SECONDS="${REFRESH_INTERVAL_SECONDS:-30}"
 MIN_IDLE_SECONDS="${MIN_IDLE_SECONDS:-9}"
 POLL_SECONDS="${POLL_SECONDS:-5}"
+KIOSK_URL="${KIOSK_URL:-https://example.com/}"
 
 log() {
   printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -27,7 +28,19 @@ get_idle_seconds() {
 }
 
 reload_chrome_tab() {
-  osascript -e 'tell application "Google Chrome" to reload active tab of front window'
+  osascript - "${KIOSK_URL}" <<'APPLESCRIPT'
+on run argv
+  tell application "Google Chrome"
+    set kioskTab to active tab of front window
+    set startURL to item 1 of argv
+    if URL of kioskTab is startURL then
+      reload kioskTab
+    else
+      set URL of kioskTab to startURL
+    end if
+  end tell
+end run
+APPLESCRIPT
 }
 
 wait_until_due() {
@@ -81,7 +94,7 @@ while true; do
     wait_for_idle_threshold
 
     if reload_chrome_tab; then
-      log "Reloaded active Chrome tab."
+      log "Loaded configured Chrome start page: ${KIOSK_URL}"
       break
     fi
 

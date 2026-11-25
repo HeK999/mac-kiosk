@@ -141,6 +141,30 @@ class SystemTests(unittest.TestCase):
 
         self.assertEqual(stop.call_args_list, [call("chrome"), call("firefox")])
 
+    @patch("kiosk.system.subprocess.run")
+    def test_chrome_reload_uses_configured_url_as_script_argument(self, run):
+        run.return_value.returncode = 0
+        urls = (
+            "https://example.com/start?lang=de&view=1#home",
+            'file:///Users/Simon/start%20page.html?value="quoted"',
+        )
+        for url in urls:
+            with self.subTest(url=url):
+                run.reset_mock()
+                self.assertTrue(system.reload_browser("chrome", url))
+                args = run.call_args.args[0]
+                self.assertEqual(args[:2], ["osascript", "-e"])
+                self.assertEqual(args[3:], [url])
+                self.assertNotIn(url, args[2])
+                self.assertIn("set URL of kioskTab to startURL", args[2])
+                self.assertIn("reload kioskTab", args[2])
+
+    @patch("kiosk.system.subprocess.run")
+    def test_chrome_reload_reports_navigation_failure_for_retry(self, run):
+        run.return_value.returncode = 1
+
+        self.assertFalse(system.reload_browser("chrome", "https://example.com"))
+
     @patch("kiosk.system.start_browser_kiosk_with_retries")
     @patch("kiosk.system.stop_browser")
     def test_firefox_reload_restarts_only_firefox(self, stop, start):

@@ -18,7 +18,7 @@ https://github.com/HeK999/mac-kiosk.git
 - startet den ausgewählten Browser im Kioskmodus mit einer konfigurierten Website
 - kann vor dem Laden der Website einmal pro Kiosk-Start ein `.sh`- oder `.py`-Skript starten
 - richtet einen macOS LaunchAgent ein, damit der Kiosk beim Login automatisch startet
-- kann die Website automatisch neu laden
+- kehrt beim automatischen Reload zur konfigurierten Startseite zurück
 - wartet vor dem Reload auf eine einstellbare Inaktivitätszeit
 - installiert und konfiguriert Hammerspoon für den Edge-Blocker
 - deaktiviert beim Abschalten auch den Kiosk-Autostart und Hammerspoon-Autostart
@@ -167,9 +167,11 @@ und Fehler unter `~/Library/Application Support/kiosk/logs/`.
 Vor jedem Kioskstart werden laufende Chrome- und Firefox-Instanzen beendet. Das
 ist für Firefox erforderlich, damit die Kioskparameter nicht an eine bereits
 laufende Instanz übergeben und ignoriert werden. Firefox wird ohne privaten Modus
-gestartet; Cookies und Profildaten bleiben daher erhalten. Beim Auto-Reload lädt
-Chrome den aktiven Tab neu, während Firefox vollständig beendet und mit der
-konfigurierten Website erneut im Kioskmodus gestartet wird.
+gestartet; Cookies und Profildaten bleiben daher erhalten. Beim Auto-Reload kehrt
+Chrome im aktiven Tab zur konfigurierten Startseite zurück. Ist diese bereits
+geöffnet, wird sie neu geladen. Das gilt auch für lokale HTML-Dateien. Firefox
+wird vollständig beendet und mit der konfigurierten Startseite erneut im
+Kioskmodus gestartet.
 
 ## Befehle
 
